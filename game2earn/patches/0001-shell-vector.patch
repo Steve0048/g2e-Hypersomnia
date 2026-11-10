@@ -1,0 +1,8 @@
+--- a/src/augs/window_framework/shell.h
++++ b/src/augs/window_framework/shell.h
+@@ -1,4 +1,5 @@
+ #pragma once
+ #include <string>
++#include <vector>
+ 
+ namespace augs {
