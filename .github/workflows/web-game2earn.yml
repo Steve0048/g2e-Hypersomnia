@@ -65,16 +65,17 @@ jobs:
         run: |
           B=$GITHUB_WORKSPACE/build
           cd $B
-          # Les dernières libc++ d'Emscripten n'incluent plus en cascade certains en-têtes standard dont le code
-          # dépend implicitement (ex. std::vector dans augs/window_framework/shell.h) : on les inclut partout.
-          export CXXFLAGS="-include vector -include string -include memory -include algorithm -include functional -include optional -include array -include utility -include cstdint -include cstring -include cmath -include map -include unordered_map -include tuple -include limits"
           CC=clang CXX=clang++ emcmake cmake -DARCHITECTURE=Web -DCMAKE_BUILD_TYPE=Release \
             -DVERSION_FILE_GENERATOR_PATH=$B/prebuilt-version/version_file_generator \
             -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
             -D_CMAKE_TOOLCHAIN_PREFIX=llvm- -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 $GITHUB_WORKSPACE/hypersomnia -G Ninja
-          set -o pipefail
-          ninja -j4 2>&1 | tail -n 300
+          # -k 0 : on continue après une erreur, pour voir toutes les erreurs d'un coup.
+          ninja -j4 -k 0 > ninja.log 2>&1 || true
+          echo "===== Erreurs (uniques) ====="
+          grep -E "error:" ninja.log | sed -E 's#^.*/hypersomnia/##' | sort -u | head -n 80 || true
+          echo "===== Fin du journal ====="
+          tail -n 40 ninja.log
           test -f Hypersomnia.wasm
           ls -la Hypersomnia.*
 
