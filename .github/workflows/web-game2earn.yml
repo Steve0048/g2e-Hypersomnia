@@ -65,6 +65,8 @@ jobs:
         run: |
           B=$GITHUB_WORKSPACE/build
           cd $B
+          # Avertissement devenu erreur avec le clang récent d'Emscripten (champ inutilisé dans settings_gui.h).
+          export CXXFLAGS="-Wno-error=unused-private-field"
           CC=clang CXX=clang++ emcmake cmake -DARCHITECTURE=Web -DCMAKE_BUILD_TYPE=Release \
             -DVERSION_FILE_GENERATOR_PATH=$B/prebuilt-version/version_file_generator \
             -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
