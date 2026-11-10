@@ -1,0 +1,89 @@
+# Le client web d'Hypersomnia pour Game2Earn : le code officiel (TeamHypersomnia/Hypersomnia, AGPL-3.0) à une version
+# figée, avec les changements de Game2Earn (dossier game2earn/ de cette branche), compilé en WebAssembly avec
+# Emscripten, comme scripts/build_web.sh des créateurs. Le résultat (4 fichiers) est un artefact de l'exécution.
+name: Client web Game2Earn
+
+on:
+  push:
+    branches: [game2earn]
+  workflow_dispatch:
+
+env:
+  # La version officielle de départ (master du 1er novembre 2026, après la 4.4.0).
+  UPSTREAM_SHA: 0049839a26eb571afce084f17367cd63b5f90171
+
+concurrency:
+  group: web-game2earn
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - name: Code officiel d'Hypersomnia
+        uses: actions/checkout@v4
+        with:
+          repository: TeamHypersomnia/Hypersomnia
+          ref: ${{ env.UPSTREAM_SHA }}
+          submodules: recursive
+          path: hypersomnia
+
+      - name: Changements Game2Earn
+        uses: actions/checkout@v4
+        with:
+          path: g2e
+
+      - name: Appliquer les changements Game2Earn
+        run: |
+          if [ -d g2e/game2earn/fichiers ]; then cp -rv g2e/game2earn/fichiers/. hypersomnia/; fi
+          if ls g2e/game2earn/patches/*.patch >/dev/null 2>&1; then
+            for p in g2e/game2earn/patches/*.patch; do git -C hypersomnia apply --verbose "$GITHUB_WORKSPACE/$p"; done
+          fi
+
+      - name: Outils
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang cmake
+
+      - name: Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: emsdk-cache
+
+      - name: Outils natifs du build (version, introspection)
+        run: |
+          B=$GITHUB_WORKSPACE/build
+          mkdir -p $B/prebuilt-version $B/prebuilt-introspector
+          cd $B/prebuilt-version
+          CC=clang CXX=clang++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/version_file_generator -G Ninja
+          ninja
+          cd $B/prebuilt-introspector
+          CC=clang CXX=clang++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/Introspector-generator -G Ninja
+          ninja
+
+      - name: Compilation web
+        run: |
+          B=$GITHUB_WORKSPACE/build
+          cd $B
+          CC=clang CXX=clang++ emcmake cmake -DARCHITECTURE=Web -DCMAKE_BUILD_TYPE=Release \
+            -DVERSION_FILE_GENERATOR_PATH=$B/prebuilt-version/version_file_generator \
+            -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
+            -D_CMAKE_TOOLCHAIN_PREFIX=llvm- -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 $GITHUB_WORKSPACE/hypersomnia -G Ninja
+          set -o pipefail
+          ninja -j4 2>&1 | tail -n 300
+          test -f Hypersomnia.wasm
+          ls -la Hypersomnia.*
+
+      - name: Fichiers du client
+        run: |
+          mkdir -p client
+          cp build/Hypersomnia.html build/Hypersomnia.js build/Hypersomnia.wasm build/Hypersomnia.data client/
+          if [ -d hypersomnia/cmake/web/assets ]; then cp -r hypersomnia/cmake/web/assets client/assets; fi
+          du -sh client/* | sort -h
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-web-game2earn
+          path: client/
+          retention-days: 30
