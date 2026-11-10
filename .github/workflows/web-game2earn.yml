@@ -71,7 +71,7 @@ jobs:
             -DVERSION_FILE_GENERATOR_PATH=$B/prebuilt-version/version_file_generator \
             -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
             -D_CMAKE_TOOLCHAIN_PREFIX=llvm- -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 $GITHUB_WORKSPACE/hypersomnia -G Ninja
+            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 -DUSE_BIGINT=OFF $GITHUB_WORKSPACE/hypersomnia -G Ninja
           # -k 0 : on continue après une erreur, pour voir toutes les erreurs d'un coup.
           ninja -j4 -k 0 > ninja.log 2>&1 || true
           echo "===== Erreurs (uniques) ====="
