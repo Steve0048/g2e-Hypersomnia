@@ -1,0 +1,8 @@
+--- a/src/augs/misc/timing/stepped_timing.h
++++ b/src/augs/misc/timing/stepped_timing.h
+@@ -1,4 +1,5 @@
+ #pragma once
+ #include <cstdint>
++#include <algorithm>
+ #include "augs/misc/timing/delta.h"
+ #include "augs/pad_bytes.h"
