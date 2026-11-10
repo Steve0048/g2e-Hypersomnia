@@ -1,0 +1,23 @@
+--- a/cmake/web/web_shell.html
++++ b/cmake/web/web_shell.html
+@@ -46,4 +46,5 @@
+     }
+   </script>
++  <script src="assets/g2e-cache.js"></script>
+   <script src="assets/common.js"></script>
+   <script type='text/javascript'>
+--- a/cmake/web/assets/common.js
++++ b/cmake/web/assets/common.js
+@@ -495,6 +495,10 @@
+     else console.log('Loaded from IndexedDB');
+ 
+-    // Remove the run dependency after IDBFS is fully loaded
+-    Module.removeRunDependency('idbfs');
++    // Game2Earn : le cache préparé à la compilation (g2e-cache.js), installé avant que le jeu démarre
++    if (!err && typeof g2e_installer_cache === 'function') {
++      g2e_installer_cache(function () { Module.removeRunDependency('idbfs'); });
++    }
++    // Remove the run dependency after IDBFS is fully loaded
++    else Module.removeRunDependency('idbfs');
+   });
+ }
