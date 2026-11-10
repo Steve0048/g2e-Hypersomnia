@@ -88,6 +88,16 @@ jobs:
           if [ -d hypersomnia/cmake/web/assets ]; then cp -r hypersomnia/cmake/web/assets client/assets; fi
           du -sh client/* | sort -h
 
+      - name: Cache du jeu préparé (Chrome sans écran)
+        # Sans lui, le jeu marche aussi : il calcule ce cache au premier lancement, plus lentement.
+        continue-on-error: true
+        timeout-minutes: 50
+        run: |
+          cd g2e/game2earn
+          npm install --no-audit --no-fund puppeteer-core@23.11.1
+          node precache.mjs "$GITHUB_WORKSPACE/client"
+          ls -la "$GITHUB_WORKSPACE/client"
+
       - uses: actions/upload-artifact@v4
         with:
           name: client-web-game2earn
