@@ -1,0 +1,7 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1509,3 +1509,3 @@
+ 	set(USE_NATIVE_EXCEPTIONS ON)
+-	set(USE_BIGINT ON)
++	set(USE_BIGINT OFF)
+ 
