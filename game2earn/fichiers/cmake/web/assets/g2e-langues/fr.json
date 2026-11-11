@@ -347,5 +347,6 @@
   "{THROW_FORCE_GRENADE} quickly tosses a Force Grenade.\n{THROW_PED_GRENADE} tosses PED grenades.\n{THROW_FLASHBANG} tosses Flashbangs.": "{THROW_FORCE_GRENADE} lance vite une grenade explosive.\n{THROW_PED_GRENADE} lance une grenade PED.\n{THROW_FLASHBANG} lance une grenade aveuglante.",
   "{WALK_SILENTLY} to walk silently over the blue floor.": "{WALK_SILENTLY} pour marcher en silence sur le sol bleu.",
   "Forward moves towards crosshair": "Avancer vers le viseur",
-  "Swap mouse buttons in akimbo": "Inverser les boutons avec deux armes"
+  "Swap mouse buttons in akimbo": "Inverser les boutons avec deux armes",
+  "Click in the game to turn on the sound.": "Clique dans le jeu pour activer le son."
 }

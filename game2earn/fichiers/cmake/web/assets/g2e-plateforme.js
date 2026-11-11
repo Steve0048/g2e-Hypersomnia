@@ -11,7 +11,7 @@
 //
 // Le SDK (g2e-sdk.js) est un module ES : il est chargé par import() depuis ce script classique.
 
-var g2e_etat = { moteurPret: false, sdk: null, lance: false, attenteDepart: null, contexte: "", traductions: {} };
+var g2e_etat = { moteurPret: false, sdk: null, lance: false, attenteDepart: null, contexte: "", traductions: {}, module: null };
 
 // La table de la langue par défaut se télécharge pendant le chargement du jeu.
 var G2E_LANGUE_DEFAUT = "fr";
@@ -98,14 +98,50 @@ function g2e_ecrire_session(session, table) {
   }
 }
 
+// Le bouton son de Game2Earn : le moteur lit Module.cg_mute_audio à chaque image (volume général à zéro).
+function g2e_regler_son(actif) {
+  if (g2e_etat.module) g2e_etat.module.cg_mute_audio = !actif;
+}
+
+// Le navigateur ne laisse jouer le son qu'après un geste du joueur dans la page qui le joue. Le jeu démarre sur un
+// message de la plateforme : on tente de reprendre l'audio tout de suite, sinon au premier clic ou à la première touche,
+// avec un mot pour le joueur tant qu'il reste muet.
+function g2e_debloquer_son() {
+  var audio = typeof AL !== "undefined" && AL.currentCtx && AL.currentCtx.audioCtx;
+  if (!audio) return;
+  var message = g2e_t("Click in the game to turn on the sound.");
+  var reprendre = function () {
+    if (audio.state !== "running") audio.resume().catch(function () {});
+  };
+  var suivre = function () {
+    var el = document.getElementById("g2e-message");
+    if (audio.state === "running") {
+      if (el && el.textContent === message) g2e_message("");
+      return;
+    }
+    if (el && el.hidden) g2e_message(message);
+  };
+  audio.addEventListener("statechange", suivre);
+  ["pointerdown", "keydown", "touchstart"].forEach(function (type) {
+    window.addEventListener(type, reprendre, true);
+  });
+  reprendre();
+  setTimeout(suivre, 1500);
+}
+
 function g2e_lancer(argument) {
   if (g2e_etat.lance) return;
   g2e_etat.lance = true;
   g2e_message("");
   console.log("Game2Earn : démarrage du jeu sur " + argument);
   // La fonction globale d'Emscripten : lire Module.callMain quand elle n'est pas exportée arrête le moteur (garde-fou).
-  if (typeof callMain === "function") callMain([argument]);
-  else console.error("Game2Earn : callMain introuvable, le jeu ne peut pas démarrer");
+  if (typeof callMain === "function") {
+    try {
+      callMain([argument]);
+    } finally {
+      g2e_debloquer_son();
+    }
+  } else console.error("Game2Earn : callMain introuvable, le jeu ne peut pas démarrer");
 }
 
 // Démarrer dans Game2Earn : la session et la configuration écrites, puis le jeu lancé sur son entrée.
@@ -186,7 +222,9 @@ function g2e_brancher_sdk() {
         // Essai en dehors de la plateforme : le jeu démarre dès que le moteur est prêt, sur son menu.
         g2e_etat.attenteDepart = function () { g2e_lancer("/"); };
       } else {
+        g2e.surSon(g2e_regler_son);
         g2e.surDemarrer(function (d) {
+          g2e_regler_son(!d || d.son !== false);
           if (g2e_etat.moteurPret) g2e_au_depart(d);
           else g2e_etat.attenteDepart = function () { g2e_au_depart(d); };
         });
@@ -212,6 +250,7 @@ function g2e_moteur_pret() {
 
 function g2e_preparer_module(Module) {
   // Le jeu ne démarre qu'au départ donné par la plateforme.
+  g2e_etat.module = Module;
   Module.noInitialRun = true;
   Module.onRuntimeInitialized = function () {
     g2e_figer_dates();
