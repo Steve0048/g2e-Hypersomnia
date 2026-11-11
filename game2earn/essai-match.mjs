@@ -113,7 +113,7 @@ async function jouer(nom, capture) {
     console.log(temps(), `[${nom}]`, t.slice(0, 240))
     if (t.includes("Sent initial client configuration to the server")) entre = true
     if (/hypersomnia\.io/.test(t)) console.log(temps(), "!!! appel à hypersomnia.io :", t.slice(0, 200))
-    if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|wrong match|not on the roster|already taken|SDK introuvable/i.test(t)) echec = echec || t.slice(0, 200)
+    if (/to 'disconnected'|Wrong password|password is incorrect|Connection failed|[Kk]icked|wrong match|not on the roster|already taken|SDK introuvable/.test(t)) echec = echec || t.slice(0, 200)
   })
   page.on("pageerror", (e) => {
     console.log(temps(), "[erreur page]", String(e.stack || e).slice(0, 3000))
