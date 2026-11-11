@@ -12,6 +12,10 @@ env:
   # La version officielle de départ (master du 1er novembre 2026, après la 4.4.0).
   UPSTREAM_SHA: 0049839a26eb571afce084f17367cd63b5f90171
 
+# La version compilée est publiée en « release » (client-web.tar.gz), téléchargée par Game2Earn à la publication du jeu.
+permissions:
+  contents: write
+
 concurrency:
   group: web-game2earn
   cancel-in-progress: true
@@ -103,3 +107,13 @@ jobs:
           name: client-web-game2earn
           path: client/
           retention-days: 30
+
+      - name: Publier la version (release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="client-${{ github.run_number }}-${GITHUB_SHA::7}"
+          tar -czf client-web.tar.gz -C client .
+          sha256sum client-web.tar.gz | tee client-web.tar.gz.sha256
+          gh release create "$VERSION" client-web.tar.gz client-web.tar.gz.sha256             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"             --title "Client web Game2Earn $VERSION"             --notes "Hypersomnia (TeamHypersomnia, AGPL-3.0) au commit officiel $UPSTREAM_SHA, avec les changements de la branche game2earn ($GITHUB_SHA)."
+          echo "Version publiée : $VERSION"
