@@ -4,12 +4,35 @@
 //    est prêt, mais le jeu ne démarre pas encore (noInitialRun). On prévient la plateforme : « pret ».
 // 2. Au départ donné par la plateforme (« demarrer »), le jeu démarre avec la bonne entrée :
 //    - entraînement : le tutoriel du jeu (/tutorial) ;
-//    - défi : directement le serveur du match (/game/<adresse>:8412), avec le pseudo du joueur.
-// 3. Hors de la plateforme (essai en local), le jeu démarre seul, sur son menu.
+//    - défi : directement le serveur du match (/game/<adresse>:8412), avec le pseudo et le mot de passe du joueur.
+//    Avant le démarrage, la session est écrite pour le moteur (src/game2earn/g2e.h) : contexte, langue de la
+//    plateforme (français par défaut), mot de passe, et la table de traduction de cette langue.
+// 3. Hors de la plateforme (essai en local), le jeu démarre seul, sur son menu, en anglais et sans changement.
 //
 // Le SDK (g2e-sdk.js) est un module ES : il est chargé par import() depuis ce script classique.
 
-var g2e_etat = { moteurPret: false, sdk: null, lance: false, attenteDepart: null };
+var g2e_etat = { moteurPret: false, sdk: null, lance: false, attenteDepart: null, contexte: "", traductions: {} };
+
+// La table de la langue par défaut se télécharge pendant le chargement du jeu.
+var G2E_LANGUE_DEFAUT = "fr";
+var g2e_tables = {};
+
+function g2e_table(langue) {
+  if (langue === "en") return Promise.resolve({});
+  if (!g2e_tables[langue]) {
+    g2e_tables[langue] = fetch("assets/g2e-langues/" + langue + ".json")
+      .then(function (r) {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
+      .catch(function (e) {
+        console.warn("Game2Earn : pas de traduction « " + langue + " »", e);
+        return langue === G2E_LANGUE_DEFAUT ? {} : g2e_table(G2E_LANGUE_DEFAUT);
+      });
+  }
+  return g2e_tables[langue];
+}
+g2e_table(G2E_LANGUE_DEFAUT);
 
 function g2e_message(texte) {
   var el = document.getElementById("g2e-message");
@@ -18,13 +41,41 @@ function g2e_message(texte) {
   el.hidden = !texte;
 }
 
-// Le pseudo (et plus tard l'identité) donnés par Game2Earn, écrits dans la configuration du joueur avant le démarrage.
-function g2e_ecrire_config(config) {
+function g2e_ecrire(chemin, contenu) {
+  var dossier = chemin.slice(0, chemin.lastIndexOf("/"));
+  if (dossier && !FS.analyzePath(dossier).exists) FS.mkdirTree(dossier);
+  FS.writeFile(chemin, contenu);
+}
+
+// Une ligne de session ou de traduction : « \ » et les retours à la ligne échappés (lus par g2e.h).
+function g2e_ligne(texte) {
+  return String(texte).replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n");
+}
+
+// Le pseudo donné par Game2Earn : le jeu ne demande pas d'en choisir un.
+function g2e_ecrire_config(pseudo) {
   try {
-    if (!FS.analyzePath("/user/conf.d").exists) FS.mkdir("/user/conf.d");
-    FS.writeFile("/user/conf.d/game2earn.json", JSON.stringify(config, null, 2));
+    var config = { prompted_for_sign_in_once: true };
+    if (pseudo) config.client = { nickname: pseudo };
+    g2e_ecrire("/user/conf.d/game2earn.json", JSON.stringify(config, null, 2));
   } catch (e) {
     console.warn("Game2Earn : configuration non écrite", e);
+  }
+}
+
+// La session lue par le moteur au démarrage (src/game2earn/g2e.h).
+function g2e_ecrire_session(session, table) {
+  try {
+    var lignes = ["actif=1", "contexte=" + (session.contexte || ""), "langue=" + session.langue];
+    if (session.motDePasse) lignes.push("mot_de_passe=" + g2e_ligne(session.motDePasse));
+    g2e_ecrire("/g2e/session.txt", lignes.join("\n") + "\n");
+    var paires = [];
+    for (var anglais in table) {
+      if (Object.prototype.hasOwnProperty.call(table, anglais) && table[anglais]) paires.push(g2e_ligne(anglais), g2e_ligne(table[anglais]));
+    }
+    g2e_ecrire("/g2e/traduction.txt", paires.join("\n") + "\n");
+  } catch (e) {
+    console.warn("Game2Earn : session non écrite", e);
   }
 }
 
@@ -38,11 +89,30 @@ function g2e_lancer(argument) {
   else console.error("Game2Earn : callMain introuvable, le jeu ne peut pas démarrer");
 }
 
-// Ce que la plateforme donne au départ : la salle du match (serveur g2e-hypersomnia), sinon rien (entraînement libre).
+// Démarrer dans Game2Earn : la session et la configuration écrites, puis le jeu lancé sur son entrée.
+function g2e_demarrer_dans_la_plateforme(langue, session, argument) {
+  session.langue = langue;
+  g2e_etat.contexte = session.contexte;
+  g2e_table(langue).then(function (table) {
+    g2e_etat.traductions = table;
+    g2e_ecrire_config(session.pseudo);
+    g2e_ecrire_session(session, table);
+    g2e_lancer(argument);
+  });
+}
+
+// Un texte de la page dans la langue du joueur (les messages de la page sont dans la même table que ceux du jeu).
+function g2e_t(texte) {
+  return g2e_etat.traductions[texte] || texte;
+}
+
+// Ce que la plateforme donne au départ : la langue, la salle du match (serveur g2e-hypersomnia), sinon rien.
 function g2e_au_depart(donnees) {
+  var langue = (donnees && donnees.langue) || G2E_LANGUE_DEFAUT;
   var salle = donnees && donnees.salle;
-  if (!salle) return g2e_lancer("/tutorial");
-  g2e_message("Préparation du match…");
+  if (!salle) return g2e_demarrer_dans_la_plateforme(langue, { contexte: "entrainement" }, "/tutorial");
+  g2e_table(langue).then(function (table) { g2e_etat.traductions = table; });
+  g2e_message(g2e_t("Preparing the match..."));
   var lire = function () {
     fetch(salle.serveur + "/salles/" + salle.code + "/acces?jeton=" + encodeURIComponent(salle.jeton), { cache: "no-store" })
       .then(function (r) {
@@ -50,25 +120,39 @@ function g2e_au_depart(donnees) {
         return r.json();
       })
       .then(function (a) {
-        if (a.pseudo) g2e_ecrire_config({ client: { nickname: a.pseudo } });
-        if (a.etat === "entrainement") return g2e_lancer("/tutorial");
+        if (a.etat === "entrainement") {
+          return g2e_demarrer_dans_la_plateforme(langue, { contexte: "entrainement", pseudo: a.pseudo }, "/tutorial");
+        }
         if (a.etat === "preparation") {
-          g2e_message("Ton serveur de match démarre près de chez toi… quelques secondes.");
+          g2e_message(g2e_t("Your match server is starting near you... a few seconds."));
           return setTimeout(lire, 3000);
         }
         if (a.etat === "pret") {
           var adresse = String(a.lien || "").split("/game/")[1];
-          if (a.motDePasse) g2e_message("Mot de passe du match : " + a.motDePasse);
-          return g2e_lancer(adresse ? "/game/" + adresse : "/tutorial");
+          if (!adresse) return g2e_message(g2e_t("The match is no longer available."));
+          return g2e_demarrer_dans_la_plateforme(langue, { contexte: "defi", pseudo: a.pseudo, motDePasse: a.motDePasse }, "/game/" + adresse);
         }
-        g2e_message(a.message || "Le match n'est plus disponible.");
+        g2e_message(a.message || g2e_t("The match is no longer available."));
       })
       .catch(function () {
-        g2e_message("Connexion au serveur du match… nouvel essai dans un instant.");
+        g2e_message(g2e_t("Connecting to the match server... trying again in a moment."));
         setTimeout(lire, 4000);
       });
   };
   lire();
+}
+
+// Ce que le moteur signale (g2e::evenement dans src/game2earn/g2e.h).
+function g2e_evenement(code) {
+  if (code === 1) {
+    // Le portail de fin du tutoriel : l'entraînement est terminé.
+    console.log("Game2Earn : entraînement terminé");
+    if (g2e_etat.sdk && g2e_etat.sdk.integre) g2e_etat.sdk.fin(0);
+  } else if (code === 2) {
+    // Le joueur a quitté le serveur du match : le résultat arrive par le serveur, à la fin du match.
+    console.log("Game2Earn : serveur du match quitté");
+    g2e_message(g2e_t("You left the match server. The result will appear on Game2Earn at the end of the match."));
+  }
 }
 
 function g2e_brancher_sdk() {

@@ -1,0 +1,269 @@
+diff --git a/src/application/gui/ingame_menu_gui.h b/src/application/gui/ingame_menu_gui.h
+index 5be8a62e9..d40d0d460 100644
+--- a/src/application/gui/ingame_menu_gui.h
++++ b/src/application/gui/ingame_menu_gui.h
+@@ -9,6 +9,7 @@
+ 
+ #include "application/gui/ingame_menu_button_type.h"
+ #include "application/gui/menu/menu_context.h"
++#include "game2earn/g2e.h"
+ 
+ using ingame_menu_context = menu_context<false, ingame_menu_button_type>;
+ using const_ingame_menu_context = menu_context<true, ingame_menu_button_type>;
+@@ -60,12 +61,12 @@ struct ingame_menu_gui {
+ 			return true;
+ 		}
+ 
+-		if (change.was_pressed(augs::event::keys::key::B)) {
++		if (!g2e::actif() && change.was_pressed(augs::event::keys::key::B)) {
+ 			button_callback(ingame_menu_button_type::BROWSE_SERVERS);
+ 			return true;
+ 		}
+ 
+-		if (change.was_pressed(augs::event::keys::key::C)) {
++		if (!(g2e::actif() && root.buttons[int(ingame_menu_button_type::INVITE_TO_JOIN)].hide) && change.was_pressed(augs::event::keys::key::C)) {
+ 			button_callback(ingame_menu_button_type::INVITE_TO_JOIN);
+ 			return true;
+ 		}
+@@ -102,6 +103,24 @@ struct ingame_menu_gui {
+ 
+ 		root.buttons[int(ingame_menu_button_type::INVITE_TO_JOIN)].hide = context.deps.hide_invite_to_join;
+ 
++		if (g2e::actif()) {
++			/* Pas de liens vers l'extérieur, de liste de serveurs ni de menu principal : la plateforme mène le jeu. */
++			for (const auto t : {
++				ingame_menu_button_type::STEAM,
++				ingame_menu_button_type::DISCORD,
++				ingame_menu_button_type::TELEGRAM,
++				ingame_menu_button_type::GITHUB,
++				ingame_menu_button_type::BROWSE_SERVERS,
++				ingame_menu_button_type::QUIT_TO_MENU
++			}) {
++				root.buttons[int(t)].hide = true;
++			}
++
++			if (!context.deps.is_tutorial && !context.deps.is_range) {
++				root.buttons[int(ingame_menu_button_type::INVITE_TO_JOIN)].hide = true;
++			}
++		}
++
+ 		root.buttons[int(ingame_menu_button_type::STEAM)].special_image = assets::necessary_image_id::STEAM_BUTTON;
+ 		root.buttons[int(ingame_menu_button_type::DISCORD)].special_image = assets::necessary_image_id::DISCORD_BUTTON;
+ 		root.buttons[int(ingame_menu_button_type::TELEGRAM)].special_image = assets::necessary_image_id::TELEGRAM_BUTTON;
+diff --git a/src/application/gui/main_menu_gui.h b/src/application/gui/main_menu_gui.h
+index 3cba1af90..d643af480 100644
+--- a/src/application/gui/main_menu_gui.h
++++ b/src/application/gui/main_menu_gui.h
+@@ -9,6 +9,7 @@
+ 
+ #include "application/gui/main_menu_button_type.h"
+ #include "application/gui/menu/menu_context.h"
++#include "game2earn/g2e.h"
+ 
+ using main_menu_context = menu_context<false, main_menu_button_type>;
+ using const_main_menu_context = menu_context<true, main_menu_button_type>;
+@@ -162,6 +163,12 @@ struct main_menu_gui {
+ 		root.buttons[int(main_menu_button_type::TELEGRAM)].colorize = white * menu_buttons_colors;
+ 		root.buttons[int(main_menu_button_type::GITHUB)].colorize = white * menu_buttons_colors;
+ 
++		if (g2e::actif()) {
++			for (auto& b : root.buttons) {
++				b.hide = true;
++			}
++		}
++
+ 		world.advance_elements(context, vdt);
+ 		world.rebuild_layouts(context);
+ 		world.build_tree_data_into(context);
+diff --git a/src/application/gui/settings_gui.cpp b/src/application/gui/settings_gui.cpp
+index 92c9898d2..6f5cce7ca 100644
+--- a/src/application/gui/settings_gui.cpp
++++ b/src/application/gui/settings_gui.cpp
+@@ -1,6 +1,7 @@
+ #include <cctype>
+ #include <cstddef>
+ #include <cstdint>
++#include "game2earn/g2e.h"
+ #include <cstring>
+ #include <thread>
+ #include <algorithm>
+@@ -2219,6 +2220,35 @@ void settings_gui_state::perform(
+ 
+ 		int field_id = 0;
+ 
++		if (g2e::actif()) {
++			static const char* labels[int(settings_pane::COUNT)];
++			static std::string textes[int(settings_pane::COUNT)];
++			int ordre[int(settings_pane::COUNT)];
++
++			for (int i = 0; i < int(settings_pane::COUNT); ++i) {
++				textes[i] = format_enum(static_cast<settings_pane>(i));
++				labels[i] = textes[i].c_str();
++				ordre[i] = -1;
++			}
++
++			const settings_pane montres[] = { settings_pane::CONTROLS, settings_pane::GRAPHICS, settings_pane::AUDIO, settings_pane::INTERFACE };
++			bool actif_montre = false;
++
++			for (int j = 0; j < 4; ++j) {
++				ordre[j] = int(montres[j]);
++				actif_montre = actif_montre || active_pane == montres[j];
++			}
++
++			if (!actif_montre) {
++				active_pane = settings_pane::CONTROLS;
++			}
++
++			auto index = int(active_pane);
++			ImGui::TabLabels(labels, int(settings_pane::COUNT), index, ordre);
++			active_pane = static_cast<settings_pane>(index);
++			ImGui::Separator();
++		}
++		else
+ 		do_pretty_tabs(active_pane, [](const settings_pane) -> std::optional<std::string> { 
+ 			return std::nullopt; 
+ 		});
+diff --git a/src/application/setups/test_scene_setup.cpp b/src/application/setups/test_scene_setup.cpp
+index 8431f49a4..5ab1bed4a 100644
+--- a/src/application/setups/test_scene_setup.cpp
++++ b/src/application/setups/test_scene_setup.cpp
+@@ -1,5 +1,6 @@
+ #include <cstdint>
+ #include <sstream>
++#include "game2earn/g2e.h"
+ #include <iomanip>
+ #include "game/cosmos/logic_step.h"
+ #include "game/modes/logic_speed.h"
+@@ -1455,7 +1456,12 @@ bool test_scene_setup::post_solve(const const_logic_step step) {
+ 					const auto& name = portal->unique_name;
+ 
+ 					if (begins_with(name, "main_menu")) {
+-						special_result = custom_imgui_result::GO_TO_MAIN_MENU;
++						if (g2e::actif()) {
++							g2e::evenement(1);
++						}
++						else {
++							special_result = custom_imgui_result::GO_TO_MAIN_MENU;
++						}
+ 					}
+ 
+ 					if (begins_with(name, "shooting_range")) {
+@@ -1840,7 +1846,7 @@ void test_scene_setup::draw_tutorial_hud(const draw_setup_gui_input& in) {
+ 			const auto label_text = formatted_string(
+ 				stage->first == stage->second ?
+ 				std::string("Final stage") :
+-				typesafe_sprintf("Stage %x/%x", stage->first - 1, stage->second - 1),
++				typesafe_sprintf(g2e::tr("Stage %x/%x"), stage->first - 1, stage->second - 1),
+ 				style(font, in.config.arena_mode_gui.money_bar_color)
+ 			);
+ 
+diff --git a/src/augs/gui/formatted_string.cpp b/src/augs/gui/formatted_string.cpp
+index 39694bdbd..eb63456a2 100644
+--- a/src/augs/gui/formatted_string.cpp
++++ b/src/augs/gui/formatted_string.cpp
+@@ -6,6 +6,7 @@
+ #include "augs/templates/container_templates.h"
+ 
+ #include "augs/gui/formatted_string.h"
++#include "game2earn/g2e.h"
+ 
+ int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char* in_text_end);
+ 
+@@ -115,9 +116,17 @@ namespace augs {
+ 				const std::string& str, 
+ 				const style s
+ 			) {
+-				reserve(str.size());
++				const auto& texte = [&]() -> const std::string& {
++					if (const auto t = g2e::trouver(str)) {
++						return *t;
++					}
+ 
+-				for (const auto c : str) {
++					return str;
++				}();
++
++				reserve(texte.size());
++
++				for (const auto c : texte) {
+ 					emplace_back(s, c);
+ 				}
+ 			}
+diff --git a/src/view/mode_gui/arena/render_text_with_hotkeys.hpp b/src/view/mode_gui/arena/render_text_with_hotkeys.hpp
+index 48558ce94..f7ec26c3a 100644
+--- a/src/view/mode_gui/arena/render_text_with_hotkeys.hpp
++++ b/src/view/mode_gui/arena/render_text_with_hotkeys.hpp
+@@ -4,6 +4,7 @@
+ #include <unordered_map>
+ 
+ #include "augs/string/string_to_enum.h"
++#include "game2earn/g2e.h"
+ 
+ template <class T, class H>
+ void render_text_with_hotkeys_line(const std::string& input, T&& text, H&& hotkey) {
+@@ -49,6 +50,8 @@ void render_text_with_hotkeys_line(const std::string& input, T&& text, H&& hotke
+ 
+ template <class T, class L, class H>
+ void render_text_with_hotkeys(std::string input, T&& text, L&& break_line, H&& hotkey) {
++	input = g2e::tr(input);
++
+ #if WEB_CRAZYGAMES
+ 	str_ops(input).replace_all("{ESCAPE}", "Tab");
+ #else
+diff --git a/src/work.cpp b/src/work.cpp
+index d76e80106..658719794 100644
+--- a/src/work.cpp
++++ b/src/work.cpp
+@@ -81,6 +81,7 @@
+ #include "application/network/protocol_version.h"
+ #include "augs/misc/imgui/imgui_status_icons.h"
+ #include "application/main/server_passwords.h"
++#include "game2earn/g2e.h"
+ #include "application/main/favorite_servers.h"
+ #include "application/setups/client/connect_target.h"
+ #include "application/main/server_key.h"
+@@ -4034,6 +4035,11 @@ work_result work(
+ 			}
+ 		}
+ 
++		/* Game2Earn : le mot de passe du match, donné par la plateforme - rien à taper. */
++		if (identity_context.password.empty() && g2e::actif() && !g2e::etat().mot_de_passe.empty()) {
++			identity_context.password = g2e::etat().mot_de_passe;
++		}
++
+ 		/*
+ 			A server on the list that wants a password, with none for this join: asked right here, when nothing
+ 			else holds the join any more - the entered one goes at once.
+@@ -4166,6 +4172,10 @@ work_result work(
+ 
+ 		LOG("Launched mode: %x", augs::enum_to_string(mode));
+ 
++		if (g2e::actif()) {
++			LOG("Game2Earn: contexte %x, langue %x, %x traductions.", g2e::etat().contexte, g2e::etat().langue, g2e::etat().traductions.size());
++		}
++
+ 		switch (mode) {
+ 			case activity_type::MAIN_MENU:
+ 				launch_main_menu();
+@@ -5190,6 +5200,10 @@ work_result work(
+ 
+ 			switch (result) {
+ 				case custom_imgui_result::GO_TO_MAIN_MENU:
++					if (g2e::actif()) {
++						g2e::evenement(2);
++					}
++
+ 					if constexpr(std::is_same_v<S, client_setup>) {
+ 						if (setup.failed_on_list_key()) {
+ 							browse_servers_gui.refresh_server_list(get_browse_servers_input());
+@@ -7264,7 +7278,9 @@ work_result work(
+ 								switch (setup.escape()) {
+ 									case setup_escape_result::LAUNCH_INGAME_MENU: ingame_menu.show = true; return true;
+ 									case setup_escape_result::JUST_FETCH: return true;
+-									case setup_escape_result::GO_TO_MAIN_MENU: launch_setup(activity_type::MAIN_MENU); return true;
++									case setup_escape_result::GO_TO_MAIN_MENU:
++										if (g2e::actif()) { ingame_menu.show = true; return true; }
++										launch_setup(activity_type::MAIN_MENU); return true;
+ 									case setup_escape_result::QUIT_PLAYTESTING: restore_background_setup(); return true;
+ 									default: return false;
+ 								}

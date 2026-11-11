@@ -1,0 +1,29 @@
+diff --git a/imgui_draw.cpp b/imgui_draw.cpp
+index 7934bb7d..96c939df 100644
+--- a/imgui_draw.cpp
++++ b/imgui_draw.cpp
+@@ -3526,10 +3526,15 @@ const char* ImFont::CalcWordWrapPositionA(float scale, const char* text, const c
+     return s;
+ }
+ 
++// Game2Earn : traduction des textes affichés (src/game2earn/g2e.h la branche quand le jeu est dans la plateforme).
++bool (*GImGuiG2eTraduire)(const char** debut, const char** fin) = NULL;
++
+ ImVec2 ImFont::CalcTextSizeA(float size, float max_width, float wrap_width, const char* text_begin, const char* text_end, const char** remaining) const
+ {
+     if (!text_end)
+         text_end = text_begin + strlen(text_begin); // FIXME-OPT: Need to avoid this.
++    if (GImGuiG2eTraduire && !remaining)
++        GImGuiG2eTraduire(&text_begin, &text_end);
+ 
+     const float line_height = size;
+     const float scale = size / FontSize;
+@@ -3624,6 +3629,8 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, Im
+ {
+     if (!text_end)
+         text_end = text_begin + strlen(text_begin); // ImGui:: functions generally already provides a valid text_end, so this is merely to handle direct calls.
++    if (GImGuiG2eTraduire)
++        GImGuiG2eTraduire(&text_begin, &text_end);
+ 
+     // Align to be pixel perfect
+     float x = IM_FLOOR(pos.x);

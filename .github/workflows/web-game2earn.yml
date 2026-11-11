@@ -44,6 +44,10 @@ jobs:
           if ls g2e/game2earn/patches/*.patch >/dev/null 2>&1; then
             for p in g2e/game2earn/patches/*.patch; do git -C hypersomnia apply --verbose "$GITHUB_WORKSPACE/$p"; done
           fi
+          # ImGui est un sous-module : ses correctifs s'appliquent dans son dossier.
+          if ls g2e/game2earn/patches/imgui/*.patch >/dev/null 2>&1; then
+            for p in g2e/game2earn/patches/imgui/*.patch; do git -C hypersomnia/src/3rdparty/imgui apply --verbose "$GITHUB_WORKSPACE/$p"; done
+          fi
 
       - name: Outils
         # Sans les paquets Ubuntu (leurs miroirs Azure tombent parfois en panne) : cmake, gcc et Python sont déjà sur
