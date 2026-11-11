@@ -20,6 +20,14 @@ cat > .config/Hypersomnia/user/conf.d/game2earn.json <<'JSON'
 }
 JSON
 
+# Le port WebRTC (navigateurs) : avec le « 1:1 Port Mapping » d'Edgegap sur le port nommé « web », le port est tiré
+# au hasard mais identique dedans et dehors ; Edgegap le donne dans ARBITRIUM_PORT_WEB_INTERNAL. Le serveur doit écouter
+# sur ce port-là, sinon il annonce aux navigateurs un port (9000) que personne ne peut joindre de l'extérieur.
+if [ -n "${ARBITRIUM_PORT_WEB_INTERNAL:-}" ]; then
+  export HYPERSOMNIA_WEB_PORT="$ARBITRIUM_PORT_WEB_INTERNAL"
+  echo "Game2Earn : port WebRTC $HYPERSOMNIA_WEB_PORT (Edgegap, 1:1)"
+fi
+
 # Le serveur du match (réglé par les variables HYPERSOMNIA_* données par Edgegap) ; il s'arrête avec le conteneur.
 sleep 3
 exec ./Hypersomnia-Headless.AppImage --appimage-extract-and-run --no-update-on-launch
