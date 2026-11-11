@@ -92,7 +92,6 @@ jobs:
       - name: Compilation web
         run: |
           B=$GITHUB_WORKSPACE/build
-          set -o pipefail
           cd $B
           # Avertissement devenu erreur avec le clang récent d'Emscripten (champ inutilisé dans settings_gui.h).
           export CXXFLAGS="-Wno-error=unused-private-field"
@@ -105,9 +104,7 @@ jobs:
             -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
             -D_CMAKE_TOOLCHAIN_PREFIX=llvm- -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DGIT_EXECUTABLE=$B/git-hypersomnia \
-            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 -DUSE_BIGINT=OFF $GITHUB_WORKSPACE/hypersomnia -G Ninja 2>&1 | tee cmake.log
-          grep "Detected version" cmake.log
-          if grep -q "Detected version: 0.0.0" cmake.log; then echo "Version 0.0.0 : le tag n'a pas été trouvé"; exit 1; fi
+            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 -DUSE_BIGINT=OFF $GITHUB_WORKSPACE/hypersomnia -G Ninja
           # -k 0 : on continue après une erreur, pour voir toutes les erreurs d'un coup.
           ninja -j4 -k 0 > ninja.log 2>&1 || true
           echo "===== Erreurs (uniques) ====="
@@ -115,6 +112,10 @@ jobs:
           echo "===== Fin du journal ====="
           tail -n 40 ninja.log
           test -f Hypersomnia.wasm
+          # Le numéro de version gravé dans le client (fichier produit par le générateur de version).
+          V=$(find $B -name hypersomnia_version.cpp | head -1)
+          grep -n "commit_tag" "$V"
+          if ! grep -q 'commit_tag("[1-9]' "$V"; then echo "Client sans numéro de version (0.0.0)"; exit 1; fi
           ls -la Hypersomnia.*
 
       - name: Fichiers du client
