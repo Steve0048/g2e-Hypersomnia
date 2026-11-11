@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hypersomnia</title>
+  <!-- Game2Earn : la page du jeu dans la plateforme. Chemins relatifs (servie sous /v1/jeux/hypersomnia/v/<version>/),
+       pas de service worker à elle (celui de la plateforme met le jeu sur l'appareil). -->
+  <link rel="stylesheet" href="assets/common.css">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    #g2e-message { position: fixed; inset: auto 0 12% 0; text-align: center; color: #cfe8d0; font: 15px/1.5 system-ui, sans-serif; pointer-events: none; }
+    #g2e-message[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div oncontextmenu="return false;" class="center-container" id="progress-container">
+    <div class="spinner" id="spinner"></div>
+    <div class="downloading-text" id="downloading-text">Chargement… 0 %</div>
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-bar-inner" id="progress-bar-inner"></div>
+    </div>
+    <div class="progress-mb" id="progress-mb">0 Mo</div>
+  </div>
+  <canvas oncontextmenu="return false;" id="canvas" tabindex="-1"></canvas>
+  <div id="g2e-message" hidden></div>
+
+  <script src="assets/g2e-cache.js"></script>
+  <script src="assets/common.js"></script>
+  <script src="assets/g2e-plateforme.js"></script>
+  <script type='text/javascript'>
+    var Module = create_module(false);
+    g2e_preparer_module(Module);
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>
