@@ -58,11 +58,14 @@ jobs:
 
       - name: Journal du serveur
         if: always()
-        run: docker logs match 2>&1 | tail -n 120
+        run: |
+          docker logs match 2>&1 | tail -n 160
+          echo "--- Places refusées par le serveur :"
+          docker logs match 2>&1 | grep -i "not theirs" || echo "(aucune)"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: essai-match
-          path: game2earn/essai-match.png
+          path: game2earn/essai-*.png
           retention-days: 14

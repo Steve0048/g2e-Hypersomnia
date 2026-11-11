@@ -12,13 +12,14 @@ import { generateKeyPairSync } from "node:crypto"
 import { createReadStream, readFileSync, statSync, writeFileSync } from "node:fs"
 import { extname, join, normalize } from "node:path"
 
-if (process.argv[2] === "preparer") {
-  const cle = () => {
+const cle = () => {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519")
     const graine = privateKey.export({ format: "der", type: "pkcs8" }).subarray(-32).toString("hex")
     const publique = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("hex")
     return { cle: `hypersomnia-key-v1:${graine}`, compte: `0x${publique}` }
-  }
+}
+
+if (process.argv[2] === "preparer") {
   const places = [{ pseudo: "Testeur_G2E", ...cle() }, { pseudo: "Adversaire", ...cle() }]
   writeFileSync("essai-places.json", JSON.stringify(places))
   writeFileSync(
@@ -42,7 +43,7 @@ if (process.argv[2] === "preparer") {
 const { default: puppeteer } = await import("puppeteer-core")
 const [dossier, signalisation] = process.argv.slice(2)
 if (!dossier || !signalisation) throw new Error("Usage : node essai-match.mjs <client> <ws://hôte:port>")
-const place = JSON.parse(readFileSync("essai-places.json", "utf8"))[0]
+const places = JSON.parse(readFileSync("essai-places.json", "utf8"))
 
 const BANC = `<!doctype html><meta charset="utf-8"><title>Banc Game2Earn</title>
 <style>body{margin:0;background:#111}iframe{width:100vw;height:100vh;border:0}</style>
@@ -55,14 +56,9 @@ window.demarrer = () => f.contentWindow.postMessage({ source: "g2e-plateforme", 
   salle: { serveur: location.origin, code: "essai00000", place: 0, jeton: "0123456789abcdef0123456789abcdef", pause: false } }, "*")
 </script>`
 
-const ACCES = {
-  etat: "pret",
-  lien: "https://jeu.example/game/127.0.0.1:8412",
-  signalisation,
-  pseudo: place.pseudo,
-  motDePasse: "essai",
-  cle: place.cle,
-}
+// L'accès que le faux Worker donne à la page : celui de la place 1, puis celui d'un imposteur.
+const acces = (pseudo, cle) => ({ etat: "pret", lien: "https://jeu.example/game/127.0.0.1:8412", signalisation, pseudo, motDePasse: "essai", cle })
+let ACCES = acces(places[0].pseudo, places[0].cle)
 
 // Le SDK de la plateforme, réduit au protocole (Jeux/sdk/g2e-sdk.js de Game2Earn) : la release n'a pas le sien.
 const SDK = `const integre = window.parent !== window
@@ -99,45 +95,64 @@ const navigateur = await puppeteer.launch({
   protocolTimeout: 1_800_000,
   args: ["--no-sandbox", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--window-size=1280,720"],
 })
-const page = await navigateur.newPage()
-await page.setViewport({ width: 1280, height: 720 })
-
 const t0 = Date.now()
 const temps = () => `${((Date.now() - t0) / 1000).toFixed(0).padStart(4)} s`
-let entre = false
-let echec = ""
-page.on("console", (m) => {
-  const t = m.text()
-  if (t.startsWith("set_status: Downloading data")) return
-  console.log(temps(), "[jeu]", t.slice(0, 240))
-  if (t.includes("Sent initial client configuration to the server")) entre = true
-  if (/hypersomnia\.io/.test(t)) console.log(temps(), "!!! appel à hypersomnia.io :", t.slice(0, 200))
-  if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|not on the roster|taken/i.test(t)) echec = echec || t.slice(0, 200)
-})
-page.on("pageerror", (e) => console.log(temps(), "[erreur page]", String(e).slice(0, 300)))
-page.on("request", (r) => {
-  if (/hypersomnia\.io/.test(r.url())) console.log(temps(), "!!! requête vers hypersomnia.io :", r.url())
-})
 
-await page.goto("http://localhost:8765/banc.html", { waitUntil: "domcontentloaded" })
+// Un joueur ouvre la page du jeu, reçoit « demarrer » et entre seul dans le match. Rend s'il est entré, et s'il a été
+// refusé ou sorti.
+async function jouer(nom, capture) {
+  const page = await navigateur.newPage()
+  await page.setViewport({ width: 1280, height: 720 })
 
-for (let i = 0; i < 600; i++) {
-  await attendre(1000)
-  const j = await page.evaluate(() => window.journal.map((m) => m.type))
-  if (j.includes("pret")) break
+  let entre = false
+  let echec = ""
+  page.on("console", (m) => {
+    const t = m.text()
+    if (t.startsWith("set_status: Downloading data")) return
+    console.log(temps(), `[${nom}]`, t.slice(0, 240))
+    if (t.includes("Sent initial client configuration to the server")) entre = true
+    if (/hypersomnia\.io/.test(t)) console.log(temps(), "!!! appel à hypersomnia.io :", t.slice(0, 200))
+    if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|wrong match|not on the roster|taken/i.test(t)) echec = echec || t.slice(0, 200)
+  })
+  page.on("pageerror", (e) => console.log(temps(), "[erreur page]", String(e.stack || e).slice(0, 3000)))
+  page.on("request", (r) => {
+    if (/hypersomnia\.io/.test(r.url())) console.log(temps(), "!!! requête vers hypersomnia.io :", r.url())
+  })
+
+  await page.goto("http://localhost:8765/banc.html", { waitUntil: "domcontentloaded" })
+
+  for (let i = 0; i < 600; i++) {
+    await attendre(1000)
+    const j = await page.evaluate(() => window.journal.map((m) => m.type))
+    if (j.includes("pret")) break
+  }
+  console.log(temps(), "« pret » reçu, « demarrer » envoyé")
+  await page.evaluate(() => window.demarrer())
+
+  for (let i = 0; i < 600 && !entre && !echec; i++) await attendre(1000)
+  // 30 secondes dans le match : le serveur vérifie le compte de la place juste après l'entrée.
+  if (entre) for (let i = 0; i < 30 && !echec; i++) await attendre(1000)
+  await page.screenshot({ path: capture })
+  await page.close()
+  return { entre, echec }
 }
-console.log(temps(), "« pret » reçu, « demarrer » envoyé")
-await page.evaluate(() => window.demarrer())
 
-for (let i = 0; i < 600 && !entre && !echec; i++) await attendre(1000)
-// 30 secondes dans le match : le serveur vérifie le compte de la place juste après l'entrée.
-if (entre) await attendre(30_000)
-await page.screenshot({ path: "essai-match.png" })
-await navigateur.close()
-
-if (!entre || echec) {
-  console.log(`ÉCHEC : le joueur n'est pas entré dans le match, ou en a été sorti. ${echec}`)
+const vrai = await jouer("joueur", "essai-match.png")
+if (!vrai.entre || vrai.echec) {
+  await navigateur.close()
+  console.log(`ÉCHEC : le joueur n'est pas entré dans le match, ou en a été sorti. ${vrai.echec}`)
   process.exit(1)
 }
 console.log(temps(), "RÉUSSI : le joueur est entré dans le match par notre mise en relation.")
+
+// Essai négatif : un imposteur prend le pseudo de l'adversaire, avec une autre clé que celle de sa place. Le serveur
+// doit le sortir (« Connected to a wrong match »).
+ACCES = acces(places[1].pseudo, cle().cle)
+const faux = await jouer("imposteur", "essai-imposteur.png")
+await navigateur.close()
+if (faux.entre && !faux.echec) {
+  console.log("ÉCHEC : un joueur sans la clé de la place est resté dans le match.")
+  process.exit(1)
+}
+console.log(temps(), `RÉUSSI : le joueur sans la bonne clé n'a pas pris la place (${faux.echec || "pas entré"}).`)
 process.exit(0)
