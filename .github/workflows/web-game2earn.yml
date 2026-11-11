@@ -35,6 +35,13 @@ jobs:
           submodules: recursive
           path: hypersomnia
 
+      - name: Version officielle (tag)
+        # Le numéro de version vient du tag du commit (git describe) : sans lui, le client se croit en 0.0.0 et les
+        # serveurs (4.4.0) le refusent.
+        run: |
+          git -C hypersomnia fetch --depth=1 origin "+refs/tags/*:refs/tags/*"
+          git -C hypersomnia describe --exact-match --tags HEAD
+
       - name: Changements Game2Earn
         uses: actions/checkout@v4
         with:

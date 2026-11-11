@@ -58,7 +58,13 @@ function g2e_ecrire_config(session) {
   try {
     var config = { prompted_for_sign_in_once: true };
     if (session.pseudo) config.client = { nickname: session.pseudo };
-    if (session.listeServeurs) config.server_list_provider = session.listeServeurs;
+    if (session.listeServeurs) {
+      // Dans la plateforme : la liste des serveurs de Game2Earn, pas de classement ni de courtier d'identité
+      // d'hypersomnia.io (le compte du joueur est sa clé, auto-signée).
+      config.server_list_provider = session.listeServeurs;
+      config.identity_broker_url = "";
+      config.main_menu = { leaderboards_provider_url: "" };
+    }
     if (session.signalisation) config.webrtc_signalling_server_url = session.signalisation;
     g2e_ecrire("/user/conf.d/game2earn.json", JSON.stringify(config, null, 2));
   } catch (e) {

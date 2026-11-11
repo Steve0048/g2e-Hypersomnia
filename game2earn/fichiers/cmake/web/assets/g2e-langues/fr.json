@@ -4,7 +4,6 @@
   "The match is no longer available.": "Le match n'est plus disponible.",
   "Connecting to the match server... trying again in a moment.": "Connexion au serveur du match... nouvel essai dans un instant.",
   "You left the match server. The result will appear on Game2Earn at the end of the match.": "Tu as quitté le serveur du match. Le résultat s'affichera sur Game2Earn à la fin du match.",
-
   "Resume": "Reprendre",
   "Invite to join": "Inviter",
   "Restart stage": "Recommencer l'étape",
@@ -13,7 +12,6 @@
   "Browse servers": "Serveurs",
   "Quit to menu": "Menu principal",
   "Abandon match (Quit to menu)": "Abandonner le match",
-
   "General": "Général",
   "Controls": "Contrôles",
   "Interface": "Interface",
@@ -43,7 +41,6 @@
   "Apply": "Appliquer",
   "Cancel": "Annuler",
   "OK": "OK",
-
   "Shoot": "Tirer",
   "Shoot secondary": "Tir secondaire",
   "Move forward": "Avancer",
@@ -101,7 +98,6 @@
   "Special action button 10": "Sort 10",
   "Special action button 11": "Sort 11",
   "Special action button 12": "Sort 12",
-
   "Horizontal sensitivity": "Sensibilité horizontale",
   "Vertical sensitivity": "Sensibilité verticale",
   "Mouse sensitivity": "Sensibilité de la souris",
@@ -143,7 +139,6 @@
   "Strength": "Intensité",
   "Smoothness": "Douceur",
   "Method": "Méthode",
-
   "Press ": "Appuie sur ",
   "Hold ": "Maintiens ",
   "(UNASSIGNED)": "(AUCUNE TOUCHE)",
@@ -173,7 +168,6 @@
   " to defuse the bomb.": " pour désamorcer la bombe.",
   "It is too late to buy items.": "Il est trop tard pour acheter.",
   "Press {BUY_MENU} to buy items.": "Appuie sur {BUY_MENU} pour acheter.",
-
   "Player": "Joueur",
   "killed yourself": "t'es tué toi-même",
   "killed you with": "t'a tué avec",
@@ -205,7 +199,6 @@
   " THE FIRST HALF": " LA PREMIÈRE MI-TEMPS",
   " THE MATCH": " LE MATCH",
   "Last man standing!": "Dernier survivant !",
-
   "Owned already": "Déjà possédé",
   "Owned other item of the same type": "Tu as déjà un objet de ce type",
   "Firearms:": "Armes à feu :",
@@ -224,11 +217,9 @@
   "Auto-assign": "Au hasard",
   "Currently spectating:": "Tu regardes :",
   "   (change player)   ": "   (changer de joueur)   ",
-
   "Shooting Range": "Stand de tir",
   "Final stage": "Dernière étape",
   "Stage %x/%x": "Étape %x/%x",
-
   "Connection status": "Connexion",
   "Initializing connection...": "Connexion en cours...",
   "Sending the client configuration.": "Envoi de la configuration.",
@@ -237,7 +228,6 @@
   "Download complete. Rejoining the game.": "Téléchargement terminé. Retour dans la partie.",
   "Unknown error.": "Erreur inconnue.",
   "The server password is too long.": "Le mot de passe du serveur est trop long.",
-
   "A backpack will let you carry lots of grenades.": "Un sac à dos te permet de porter beaucoup de grenades.",
   "A third one won't fit...": "Une troisième ne rentre pas...",
   "ALL surfaces can bounce bullets - including wood!\nKill 2 enemies that hide behind orange boxes.": "TOUTES les surfaces font ricocher les balles, même le bois !\nTue les 2 ennemis cachés derrière les caisses orange.",
@@ -355,5 +345,7 @@
   "{SPECIAL_ACTION_BUTTON_3} will restore your Stamina.": "{SPECIAL_ACTION_BUTTON_3} rend de l'endurance.",
   "{SPRINT} to sprint.\nQuickly run over the red tiles!": "{SPRINT} pour sprinter.\nCours vite sur les dalles rouges !",
   "{THROW_FORCE_GRENADE} quickly tosses a Force Grenade.\n{THROW_PED_GRENADE} tosses PED grenades.\n{THROW_FLASHBANG} tosses Flashbangs.": "{THROW_FORCE_GRENADE} lance vite une grenade explosive.\n{THROW_PED_GRENADE} lance une grenade PED.\n{THROW_FLASHBANG} lance une grenade aveuglante.",
-  "{WALK_SILENTLY} to walk silently over the blue floor.": "{WALK_SILENTLY} pour marcher en silence sur le sol bleu."
+  "{WALK_SILENTLY} to walk silently over the blue floor.": "{WALK_SILENTLY} pour marcher en silence sur le sol bleu.",
+  "Forward moves towards crosshair": "Avancer vers le viseur",
+  "Swap mouse buttons in akimbo": "Inverser les boutons avec deux armes"
 }
