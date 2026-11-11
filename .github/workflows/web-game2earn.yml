@@ -92,14 +92,22 @@ jobs:
       - name: Compilation web
         run: |
           B=$GITHUB_WORKSPACE/build
+          set -o pipefail
           cd $B
           # Avertissement devenu erreur avec le clang récent d'Emscripten (champ inutilisé dans settings_gui.h).
           export CXXFLAGS="-Wno-error=unused-private-field"
+          # Le numéro de version vient de « git describe », lancé par le générateur depuis le dossier de compilation (hors
+          # du dépôt) : sans ce relais, il ne trouve pas le tag et le client se croit en 0.0.0 (protocole HS0.0).
+          printf '#!/bin/sh\nexec git -C "%s" "$@"\n' "$GITHUB_WORKSPACE/hypersomnia" > $B/git-hypersomnia
+          chmod +x $B/git-hypersomnia
           CC=clang CXX=clang++ emcmake cmake -DARCHITECTURE=Web -DCMAKE_BUILD_TYPE=Release \
             -DVERSION_FILE_GENERATOR_PATH=$B/prebuilt-version/version_file_generator \
             -DINTROSPECTOR_GENERATOR_PATH=$B/prebuilt-introspector/Introspector-generator \
             -D_CMAKE_TOOLCHAIN_PREFIX=llvm- -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 -DUSE_BIGINT=OFF $GITHUB_WORKSPACE/hypersomnia -G Ninja
+            -DGIT_EXECUTABLE=$B/git-hypersomnia \
+            -DUSE_O3=1 -DGENERATE_DEBUG_INFORMATION=0 -DUSE_BIGINT=OFF $GITHUB_WORKSPACE/hypersomnia -G Ninja 2>&1 | tee cmake.log
+          grep "Detected version" cmake.log
+          if grep -q "Detected version: 0.0.0" cmake.log; then echo "Version 0.0.0 : le tag n'a pas été trouvé"; exit 1; fi
           # -k 0 : on continue après une erreur, pour voir toutes les erreurs d'un coup.
           ninja -j4 -k 0 > ninja.log 2>&1 || true
           echo "===== Erreurs (uniques) ====="
