@@ -75,6 +75,22 @@ index 3cba1af90..d643af480 100644
  		world.advance_elements(context, vdt);
  		world.rebuild_layouts(context);
  		world.build_tree_data_into(context);
+diff --git a/src/application/gui/menu/menu_root.h b/src/application/gui/menu/menu_root.h
+index 0cc610cd4..471450461 100644
+--- a/src/application/gui/menu/menu_root.h
++++ b/src/application/gui/menu/menu_root.h
+@@ -50,6 +50,11 @@ public:
+ 				}
+ 				else {
+ 					buttons[i].rc = {};
++#if WEB_LOWEND
++					buttons[i].rc.set_position(vec2(70.f, screen_size.y - menu_bottom_margin_v + 8 * scale));
++#else
++					buttons[i].rc.set_position(vec2(70.f, screen_size.y - menu_bottom_margin_v + 18 * scale));
++#endif
+ 				}
+ 
+ 				continue;
 diff --git a/src/application/gui/settings_gui.cpp b/src/application/gui/settings_gui.cpp
 index 92c9898d2..6f5cce7ca 100644
 --- a/src/application/gui/settings_gui.cpp

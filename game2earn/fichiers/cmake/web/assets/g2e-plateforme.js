@@ -213,5 +213,7 @@ function g2e_preparer_module(Module) {
   };
   // Dans le cadre de la plateforme, la page ne change pas d'adresse (le jeu le ferait pour ses propres liens).
   Module.setBrowserLocation = function () {};
+  // Pas de géolocalisation par hypersomnia.io : elle ne sert qu'à trier la liste des serveurs, absente ici.
+  Module.getUserGeolocation = function () {};
   g2e_brancher_sdk();
 }

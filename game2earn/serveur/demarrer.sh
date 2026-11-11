@@ -11,4 +11,4 @@ env -i HOME=/home/hypersomniac/maitre TMPDIR=/home/hypersomniac/maitre/tmp PATH=
 
 # Le serveur du match (réglé par les variables HYPERSOMNIA_* données par Edgegap) ; il s'arrête avec le conteneur.
 sleep 3
-exec ./Hypersomnia-Headless.AppImage --appimage-extract-and-run
+exec ./Hypersomnia-Headless.AppImage --appimage-extract-and-run --no-update-on-launch
