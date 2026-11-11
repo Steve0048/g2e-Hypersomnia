@@ -62,14 +62,15 @@ let ACCES = acces(places[0].pseudo, places[0].cle)
 
 // Le SDK de la plateforme, réduit au protocole (Jeux/sdk/g2e-sdk.js de Game2Earn) : la release n'a pas le sien.
 const SDK = `const integre = window.parent !== window
-const ecouteurs = { demarrer: [] }
+const ecouteurs = { demarrer: [], son: [] }
 const envoyer = (m) => integre && window.parent.postMessage({ source: "g2e-jeu", ...m }, "*")
 window.addEventListener("message", (e) => {
   if (e.source !== window.parent || !e.data || e.data.source !== "g2e-plateforme") return
   for (const f of ecouteurs[e.data.type] ?? []) f(e.data)
 })
 export const g2e = { integre, pret: () => envoyer({ type: "pret" }), score: (n) => envoyer({ type: "score", score: n }),
-  fin: (n) => envoyer({ type: "fin", score: n }), surDemarrer: (f) => ecouteurs.demarrer.push(f) }`
+  fin: (n) => envoyer({ type: "fin", score: n }), surDemarrer: (f) => ecouteurs.demarrer.push(f),
+  surSon: (f) => ecouteurs.son.push((m) => f(m.actif)) }`
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".data": "application/octet-stream", ".ico": "image/x-icon" }
 createServer((req, res) => {
@@ -112,7 +113,7 @@ async function jouer(nom, capture) {
     console.log(temps(), `[${nom}]`, t.slice(0, 240))
     if (t.includes("Sent initial client configuration to the server")) entre = true
     if (/hypersomnia\.io/.test(t)) console.log(temps(), "!!! appel à hypersomnia.io :", t.slice(0, 200))
-    if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|wrong match|not on the roster|taken/i.test(t)) echec = echec || t.slice(0, 200)
+    if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|wrong match|not on the roster|already taken|SDK introuvable/i.test(t)) echec = echec || t.slice(0, 200)
   })
   page.on("pageerror", (e) => console.log(temps(), "[erreur page]", String(e.stack || e).slice(0, 3000)))
   page.on("request", (r) => {
