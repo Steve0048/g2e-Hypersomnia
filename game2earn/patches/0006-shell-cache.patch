@@ -1,11 +1,15 @@
 --- a/cmake/web/web_shell.html
 +++ b/cmake/web/web_shell.html
-@@ -46,4 +46,5 @@
+@@ -46,7 +46,9 @@
      }
    </script>
 +  <script src="assets/g2e-cache.js"></script>
    <script src="assets/common.js"></script>
    <script type='text/javascript'>
+     const crazygames = false;
+     var Module = create_module(crazygames);
++    Module.onRuntimeInitialized = g2e_figer_dates;
+   </script>
 --- a/cmake/web/assets/common.js
 +++ b/cmake/web/assets/common.js
 @@ -495,6 +495,10 @@
