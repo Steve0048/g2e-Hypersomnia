@@ -24,7 +24,6 @@ if (process.argv[2] === "preparer") {
   writeFileSync(
     "essai.env",
     [
-      "HYPERSOMNIA_TOURNAMENT=2",
       "HYPERSOMNIA_TOURNAMENT_TEAM_SIZE=1",
       `HYPERSOMNIA_TOURNAMENT_TEAMS=${places.map((p) => `${p.pseudo}=${p.compte}`).join("; ")}`,
       "HYPERSOMNIA_TOURNAMENT_MAPS=de_cyberaqua",
