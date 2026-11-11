@@ -6,6 +6,8 @@ name: Client web Game2Earn
 on:
   push:
     branches: [game2earn]
+    # L'image serveur et l'essai d'un match ont leurs propres recettes : pas de nouvelle compilation du client.
+    paths-ignore: [game2earn/serveur/**, game2earn/essai-match.mjs, .github/workflows/serveur-game2earn.yml, .github/workflows/essai-match-game2earn.yml]
   workflow_dispatch:
 
 env:

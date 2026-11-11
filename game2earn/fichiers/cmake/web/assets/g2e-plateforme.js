@@ -52,14 +52,27 @@ function g2e_ligne(texte) {
   return String(texte).replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n");
 }
 
-// Le pseudo donné par Game2Earn : le jeu ne demande pas d'en choisir un.
-function g2e_ecrire_config(pseudo) {
+// Le pseudo donné par Game2Earn (le jeu ne demande pas d'en choisir un) et nos serveurs : la liste des serveurs vient
+// du Worker de Game2Earn (vide : on n'entre que dans son match) et la mise en relation du conteneur du match.
+function g2e_ecrire_config(session) {
   try {
     var config = { prompted_for_sign_in_once: true };
-    if (pseudo) config.client = { nickname: pseudo };
+    if (session.pseudo) config.client = { nickname: session.pseudo };
+    if (session.listeServeurs) config.server_list_provider = session.listeServeurs;
+    if (session.signalisation) config.webrtc_signalling_server_url = session.signalisation;
     g2e_ecrire("/user/conf.d/game2earn.json", JSON.stringify(config, null, 2));
   } catch (e) {
     console.warn("Game2Earn : configuration non écrite", e);
+  }
+}
+
+// La clé de compte de la place du joueur (créée par Game2Earn, remise à lui seul) : le serveur du match n'admet à sa
+// place que ce compte - personne d'autre ne peut la prendre, même avec son pseudo et le mot de passe.
+function g2e_ecrire_cle(cle) {
+  try {
+    if (cle) g2e_ecrire("/hypersomnia_keys/account.key", cle + "\n");
+  } catch (e) {
+    console.warn("Game2Earn : clé de compte non écrite", e);
   }
 }
 
@@ -95,7 +108,8 @@ function g2e_demarrer_dans_la_plateforme(langue, session, argument) {
   g2e_etat.contexte = session.contexte;
   g2e_table(langue).then(function (table) {
     g2e_etat.traductions = table;
-    g2e_ecrire_config(session.pseudo);
+    g2e_ecrire_config(session);
+    g2e_ecrire_cle(session.cle);
     g2e_ecrire_session(session, table);
     g2e_lancer(argument);
   });
@@ -111,6 +125,7 @@ function g2e_au_depart(donnees) {
   var langue = (donnees && donnees.langue) || G2E_LANGUE_DEFAUT;
   var salle = donnees && donnees.salle;
   if (!salle) return g2e_demarrer_dans_la_plateforme(langue, { contexte: "entrainement" }, "/tutorial");
+  var listeServeurs = salle.serveur + "/server_list";
   g2e_table(langue).then(function (table) { g2e_etat.traductions = table; });
   g2e_message(g2e_t("Preparing the match..."));
   var lire = function () {
@@ -121,7 +136,7 @@ function g2e_au_depart(donnees) {
       })
       .then(function (a) {
         if (a.etat === "entrainement") {
-          return g2e_demarrer_dans_la_plateforme(langue, { contexte: "entrainement", pseudo: a.pseudo }, "/tutorial");
+          return g2e_demarrer_dans_la_plateforme(langue, { contexte: "entrainement", pseudo: a.pseudo, listeServeurs: listeServeurs }, "/tutorial");
         }
         if (a.etat === "preparation") {
           g2e_message(g2e_t("Your match server is starting near you... a few seconds."));
@@ -130,7 +145,8 @@ function g2e_au_depart(donnees) {
         if (a.etat === "pret") {
           var adresse = String(a.lien || "").split("/game/")[1];
           if (!adresse) return g2e_message(g2e_t("The match is no longer available."));
-          return g2e_demarrer_dans_la_plateforme(langue, { contexte: "defi", pseudo: a.pseudo, motDePasse: a.motDePasse }, "/game/" + adresse);
+          var session = { contexte: "defi", pseudo: a.pseudo, motDePasse: a.motDePasse, listeServeurs: listeServeurs, signalisation: a.signalisation, cle: a.cle };
+          return g2e_demarrer_dans_la_plateforme(langue, session, "/game/" + adresse);
         }
         g2e_message(a.message || g2e_t("The match is no longer available."));
       })

@@ -1,0 +1,68 @@
+# Un match Game2Earn de bout en bout, sur la machine de GitHub : notre image serveur (serveur du match et serveur
+# maître) et notre client web dans Chrome, qui entre seul dans le match comme sur la plateforme. Sans Edgegap ni
+# hypersomnia.io. Lancé à la main, ou après une nouvelle version du client ou de l'image.
+name: Essai d'un match Game2Earn
+
+on:
+  workflow_dispatch:
+    inputs:
+      client:
+        description: "Version du client (release), la dernière si vide"
+        required: false
+  workflow_run:
+    workflows: ["Client web Game2Earn", "Serveur Game2Earn"]
+    types: [completed]
+    branches: [game2earn]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  essai:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: game2earn
+
+      - name: Client web (release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p client
+          gh release download ${{ inputs.client }} --repo "$GITHUB_REPOSITORY" -p client-web.tar.gz -O client-web.tar.gz
+          tar -xzf client-web.tar.gz -C client
+          ls client client/assets
+
+      - name: Serveur du match (notre image)
+        run: |
+          IMAGE="ghcr.io/$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')/g2e-hypersomnia-serveur:latest"
+          echo "${{ github.token }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          # Les deux places du tournoi, liées à leurs comptes, comme le Worker les prépare.
+          (cd game2earn && node essai-match.mjs preparer)
+          docker run -d --name match --network host --env-file game2earn/essai.env "$IMAGE"
+          for i in $(seq 1 24); do
+            sleep 5
+            if curl -fsS http://127.0.0.1:8420/server_list_json | grep -q "server_version"; then echo "Serveur annoncé"; break; fi
+          done
+          curl -fsS http://127.0.0.1:8420/server_list_json | grep -E '"name"|"ip"|"browser_connect_string"|"require_password"' || true
+
+      - name: Le joueur entre dans le match
+        run: |
+          cd game2earn
+          npm install --no-audit --no-fund puppeteer-core@23.11.1
+          node essai-match.mjs "$GITHUB_WORKSPACE/client" ws://127.0.0.1:8000
+
+      - name: Journal du serveur
+        if: always()
+        run: docker logs match 2>&1 | tail -n 120
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: essai-match
+          path: game2earn/essai-match.png
+          retention-days: 14
