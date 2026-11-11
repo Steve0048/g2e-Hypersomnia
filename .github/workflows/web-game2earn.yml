@@ -46,17 +46,12 @@ jobs:
           fi
 
       - name: Outils
-        # Réessais, puis le miroir principal d'Ubuntu si celui d'Azure ne répond pas (panne déjà rencontrée).
+        # Sans les paquets Ubuntu (leurs miroirs Azure tombent parfois en panne) : cmake, gcc et Python sont déjà sur
+        # la machine ; ninja vient de PyPI.
         run: |
-          for i in 1 2 3 4 5; do
-            if sudo apt-get update && sudo apt-get install -y ninja-build clang cmake libc++-dev libc++abi-dev; then exit 0; fi
-            echo "Paquets indisponibles, essai $i"
-            if [ "$i" -ge 2 ]; then
-              sudo sed -i 's#https\?://azure.archive.ubuntu.com#http://archive.ubuntu.com#g; s#https\?://security.ubuntu.com#http://archive.ubuntu.com#g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
-            fi
-            sleep 30
-          done
-          exit 1
+          command -v ninja || pip install --user ninja
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          cmake --version | head -1; g++ --version | head -1
 
       - name: Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -69,10 +64,10 @@ jobs:
           B=$GITHUB_WORKSPACE/build
           mkdir -p $B/prebuilt-version $B/prebuilt-introspector
           cd $B/prebuilt-version
-          CC=clang CXX=clang++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/version_file_generator -G Ninja
+          CC=gcc CXX=g++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/version_file_generator -G Ninja
           ninja
           cd $B/prebuilt-introspector
-          CC=clang CXX=clang++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/Introspector-generator -G Ninja
+          CC=gcc CXX=g++ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/hypersomnia/cmake/Introspector-generator -G Ninja
           ninja
 
       - name: Compilation web
