@@ -115,7 +115,11 @@ async function jouer(nom, capture) {
     if (/hypersomnia\.io/.test(t)) console.log(temps(), "!!! appel à hypersomnia.io :", t.slice(0, 200))
     if (/Wrong password|password is incorrect|Disconnected|Connection failed|kicked|wrong match|not on the roster|already taken|SDK introuvable/i.test(t)) echec = echec || t.slice(0, 200)
   })
-  page.on("pageerror", (e) => console.log(temps(), "[erreur page]", String(e.stack || e).slice(0, 3000)))
+  page.on("pageerror", (e) => {
+    console.log(temps(), "[erreur page]", String(e.stack || e).slice(0, 3000))
+    // Le moteur arrêté (RuntimeError) : inutile d'attendre la suite.
+    if (/RuntimeError|Aborted/.test(String(e))) echec = echec || `plantage du jeu : ${String(e).slice(0, 160)}`
+  })
   page.on("request", (r) => {
     if (/hypersomnia\.io/.test(r.url())) console.log(temps(), "!!! requête vers hypersomnia.io :", r.url())
   })
