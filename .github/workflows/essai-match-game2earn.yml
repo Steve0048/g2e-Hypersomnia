@@ -4,15 +4,16 @@
 name: Essai d'un match Game2Earn
 
 on:
+  # Sur la branche game2earn (workflow_run et le lancement manuel ne marchent que sur la branche par défaut) :
+  # à chaque changement de l'essai, avec la dernière version du client et de l'image.
+  push:
+    branches: [game2earn]
+    paths: [game2earn/essai-match.mjs, .github/workflows/essai-match-game2earn.yml]
   workflow_dispatch:
     inputs:
       client:
         description: "Version du client (release), la dernière si vide"
         required: false
-  workflow_run:
-    workflows: ["Client web Game2Earn", "Serveur Game2Earn"]
-    types: [completed]
-    branches: [game2earn]
 
 permissions:
   contents: read
@@ -20,7 +21,6 @@ permissions:
 
 jobs:
   essai:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
