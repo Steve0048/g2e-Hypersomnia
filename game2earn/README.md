@@ -9,3 +9,5 @@ Cette branche (`game2earn`) contient seulement ce que Game2Earn ajoute au jeu of
 - `game2earn/essai-match.mjs` et `.github/workflows/essai-match-game2earn.yml` : un match de bout en bout sur la machine de GitHub. Le joueur doit entrer seul dans le match avec la clé de sa place ; un imposteur avec une autre clé doit être refusé.
 
 Le code source complet de ce qui est proposé aux joueurs de Game2Earn est donc : le code officiel à `UPSTREAM_SHA`, plus le contenu de cette branche.
+
+Le numéro de version du client vient du tag du code officiel (`git describe`, 4.4.0 aujourd'hui). La compilation s'arrête si le client sort en 0.0.0 : les serveurs refuseraient ce client (protocole HS0.0).
