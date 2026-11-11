@@ -8,6 +8,39 @@
 // Format de g2e-cache.bin : 4 octets (longueur de l'en-tête, petit-boutiste), l'en-tête JSON
 // { "version": "...", "fichiers": [{ "p": "chemin sous /user/cache", "n": taille }, ...] }, puis les fichiers à la suite.
 
+// Les fichiers du jeu (/content) reçoivent l'heure du chargement de la page comme date de modification. Or le cache
+// (cartes néon, désaturations, images des GIF) note cette date dans ses tampons : sans date fixe, un cache préparé
+// ailleurs, ou la veille, est jugé périmé et tout est recalculé. On fige donc la date de tous les fichiers du jeu,
+// la même partout, juste avant que le jeu démarre (Module.onRuntimeInitialized).
+var G2E_DATE_FIXE = 1700000000000;
+
+function g2e_figer_dates() {
+  var n = 0;
+  var debut = performance.now();
+  var parcourir = function (dossier) {
+    var noms;
+    try {
+      noms = FS.readdir(dossier);
+    } catch (e) {
+      return;
+    }
+    for (var i = 0; i < noms.length; i++) {
+      if (noms[i] === "." || noms[i] === "..") continue;
+      var chemin = dossier + "/" + noms[i];
+      try {
+        if (FS.isDir(FS.stat(chemin).mode)) parcourir(chemin);
+        else {
+          FS.utime(chemin, G2E_DATE_FIXE, G2E_DATE_FIXE);
+          n++;
+        }
+      } catch (e) {}
+    }
+  };
+  parcourir("/content");
+  parcourir("/detail");
+  console.log("Game2Earn : dates figées sur " + n + " fichiers en " + Math.round(performance.now() - debut) + " ms");
+}
+
 function g2e_installer_cache(suite) {
   var marque = "/user/cache/.g2e-precache";
   var fini = false;
