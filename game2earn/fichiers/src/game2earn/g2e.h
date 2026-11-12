@@ -146,6 +146,29 @@ namespace g2e {
 		return e;
 	}
 
+	/*
+		Ce que le joueur peut faire maintenant, relevé à chaque image par l'interface du mode de jeu
+		(view/mode_gui/arena/arena_context_tip.h) : la page n'affiche que les commandes tactiles utiles.
+		en_main : ce que tient la main principale (0 rien, 1 arme à feu, 2 arme blanche, 3 grenade, 4 bombe).
+		grenades : 1 explosive, 2 PED, 4 aveuglante, 8 interférence.
+	*/
+	struct commandes_type {
+		double le = 0.0;
+		bool interagir = false;
+		bool acheter = false;
+		bool bombe = false;
+		bool arme_a_feu = false;
+		int en_main = 0;
+		int grenades = 0;
+		bool couteaux = false;
+		int armes = 0;
+	};
+
+	inline commandes_type& commandes() {
+		static commandes_type c;
+		return c;
+	}
+
 	/* Le jeu tourne-t-il dans Game2Earn ? */
 	inline bool actif() {
 		return etat().actif;

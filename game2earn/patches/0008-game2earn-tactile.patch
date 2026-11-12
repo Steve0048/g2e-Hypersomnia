@@ -113,11 +113,114 @@ index e2c1f22..1ad3981 100644
  		auto& esc_presses = platform->esc_presses;
  
  		if (esc_presses > 0) {
+diff --git a/src/view/mode_gui/arena/arena_context_tip.h b/src/view/mode_gui/arena/arena_context_tip.h
+index d763df5..d57fa8a 100644
+--- a/src/view/mode_gui/arena/arena_context_tip.h
++++ b/src/view/mode_gui/arena/arena_context_tip.h
+@@ -8,6 +8,11 @@
+ #include "view/low_ammo_magazine_color.h"
+ #include "view/mode_gui/arena/render_text_with_hotkeys.hpp"
+ #include "view/mode_gui/arena/on_first_touching_portal.hpp"
++#include "game/detail/explosive/like_explosive.h"
++#include "game/enums/adverse_element_type.h"
++#if PLATFORM_WEB
++#include <emscripten.h>
++#endif
+ 
+ template <class E, class M, class I>
+ inline void draw_context_tip(
+@@ -27,6 +32,86 @@ inline void draw_context_tip(
+ 	using namespace augs::event;
+ 
+ 	const auto& cosm = mode_input.cosm;
++
++	/*
++		Game2Earn : ce que le joueur peut faire maintenant, pour les commandes tactiles de la page (g2e_commandes).
++	*/
++#if PLATFORM_WEB
++	if (viewed_character.alive()) {
++		auto& g = g2e::commandes();
++		g = {};
++		g.le = emscripten_get_now();
++		g.interagir = ::query_use_interaction(viewed_character).has_value();
++
++		if constexpr(!std::is_same_v<M, test_mode>) {
++			if (mode_input.rules.has_economy()) {
++				g.acheter = ::buy_area_in_range(viewed_character) && typed_mode.get_buy_seconds_left(mode_input) > 0.f;
++			}
++		}
++
++		auto genre_de = [&](const auto& item) {
++			if (item.template find<invariants::gun>() != nullptr) {
++				return 1;
++			}
++
++			if (item.template find<invariants::melee>() != nullptr) {
++				return 2;
++			}
++
++			if (item.template find<invariants::hand_fuse>() != nullptr) {
++				return ::is_like_plantable_bomb(item) ? 4 : 3;
++			}
++
++			return 0;
++		};
++
++		const auto en_mains = viewed_character.get_wielded_items();
++
++		for (std::size_t i = 0; i < en_mains.size(); ++i) {
++			if (const auto item = cosm[en_mains[i]]) {
++				const auto genre = genre_de(item);
++
++				if (i == 0) {
++					g.en_main = genre;
++				}
++
++				if (genre == 1) {
++					g.arme_a_feu = true;
++				}
++			}
++		}
++
++		viewed_character.for_each_contained_item_recursive(
++			[&](const auto& item) {
++				const auto genre = genre_de(item);
++
++				if (genre == 1 || genre == 2) {
++					++g.armes;
++				}
++
++				if (genre == 4) {
++					g.bombe = true;
++				}
++
++				if (genre == 2 && !item.get_current_slot().is_hand_slot()) {
++					g.couteaux = true;
++				}
++
++				if (const auto explosif = item.template find<invariants::explosive>()) {
++					if (const auto fusee = item.template find<invariants::hand_fuse>(); fusee != nullptr && !fusee->has_delayed_arming()) {
++						switch (explosif->explosion.type) {
++							case adverse_element_type::FORCE: g.grenades |= 1; break;
++							case adverse_element_type::PED: g.grenades |= 2; break;
++							case adverse_element_type::FLASH: g.grenades |= 4; break;
++							case adverse_element_type::INTERFERENCE: g.grenades |= 8; break;
++							default: break;
++						}
++					}
++				}
++			}
++		);
++	}
++#endif
+ 	const auto bad_color = rgba(255, 50, 50, 255);
+ 
+ 	auto colored = [&](const auto& text, const auto& c) {
 diff --git a/src/work.cpp b/src/work.cpp
-index 6587197..9b0c05c 100644
+index 6587197..a48a5ce 100644
 --- a/src/work.cpp
 +++ b/src/work.cpp
-@@ -320,6 +320,13 @@ bool platform_muted_audio() {
+@@ -320,6 +320,39 @@ bool platform_muted_audio() {
  	return web_cg_mute_audio();
  }
  
@@ -128,10 +231,36 @@ index 6587197..9b0c05c 100644
 +	return g2e::en_jeu() ? 1 : 0;
 +}
 +
++/*
++	Game2Earn : ce que le joueur peut faire maintenant (relevé par view/mode_gui/arena/arena_context_tip.h), en bits :
++	1 connu (relevé de moins d'une demi-seconde), 2 interagir, 4 acheter, 8 porte la bombe, 16 arme à feu en main,
++	32 à 224 : ce que tient la main principale (0 rien, 1 arme à feu, 2 arme blanche, 3 grenade, 4 bombe) multiplié par 32,
++	256 à 3840 : les grenades (explosive, PED, aveuglante, interférence) multipliées par 256, 4096 un couteau à lancer,
++	8192 au moins deux armes.
++*/
++extern "C" EMSCRIPTEN_KEEPALIVE int g2e_commandes() {
++	const auto& g = g2e::commandes();
++
++	if (emscripten_get_now() - g.le > 500.0) {
++		return 0;
++	}
++
++	return 1
++		| (g.interagir ? 2 : 0)
++		| (g.acheter ? 4 : 0)
++		| (g.bombe ? 8 : 0)
++		| (g.arme_a_feu ? 16 : 0)
++		| (g.en_main << 5)
++		| (g.grenades << 8)
++		| (g.couteaux ? 4096 : 0)
++		| (g.armes >= 2 ? 8192 : 0)
++	;
++}
++
  bool platform_disables_chat() {
  	return web_cg_disable_chat();
  }
-@@ -7060,6 +7067,8 @@ work_result work(
+@@ -7060,6 +7093,8 @@ work_result work(
  					&& !window_needs_cursor
  				;
  

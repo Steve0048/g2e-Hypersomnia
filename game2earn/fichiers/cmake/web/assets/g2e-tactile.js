@@ -81,14 +81,25 @@ var G2E_ICONES = {
   scores: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  // Le bouton de tir selon ce que tient le joueur : arme blanche, grenade, bombe.
+  lame: '<path d="M4 20l9-9M13 11l6-7 1 1-7 6M4 20l2 0 0-2"/>',
+  lancer: '<circle cx="17" cy="7" r="3"/><path d="M4 20c2-7 6-11 11-12"/><path d="M4 20l3-1"/>',
+  poser: '<circle cx="12" cy="13" r="6"/><path d="M12 3v4M9 5l3 2 3-2M8 20h8"/>',
   reglages: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 };
 
 // Les boutons : [identifiant, touches envoyées, groupe, contenu (icône ou texte), nom].
-//   groupe « arc » : autour du bouton de tir ; « haut » : la rangée du haut ; « panoplie » : ouverte par le bouton +.
+//   groupe « arc » : autour du bouton de tir ; « contexte » : un second arc, selon ce que porte le joueur ; « haut » :
+//   la rangée du haut ; « panoplie » : ouverte par le bouton +, pour les actions rares.
 var G2E_BOUTONS = [
   ["tir", ["tir"], "tir", "", "Tirer"],
   ["tir2", ["tir2"], "arc", "", "Tir secondaire, attaque forte"],
+  // Selon la situation : une touche par type de grenade possédé, et le couteau à lancer.
+  ["gren", ["grenade"], "contexte", "Grenade", "Grenade explosive"],
+  ["flash", ["flash"], "contexte", "Flash", "Grenade aveuglante"],
+  ["ped", ["ped"], "contexte", "PED", "Grenade PED"],
+  ["interf", ["interf"], "contexte", "Interf.", "Grenade d'interférence"],
+  ["couteau", ["couteau"], "contexte", "Couteau", "Lancer un couteau"],
   ["recharger", ["recharger"], "arc", "", "Recharger"],
   ["arme", ["arme"], "arc", "", "Arme précédente"],
   ["esquive", ["esquive"], "arc", "", "Esquive"],
@@ -102,12 +113,7 @@ var G2E_BOUTONS = [
   ["arme1", ["arme1"], "panoplie", "1", "Arme 1"],
   ["arme2", ["arme2"], "panoplie", "2", "Arme 2"],
   ["deux", ["arme1", "arme2"], "panoplie", "1+2", "Deux armes"],
-  ["couteau", ["couteau"], "panoplie", "Couteau", "Lancer un couteau"],
   ["couteaux", ["couteaux"], "panoplie", "2 cout.", "Lancer deux couteaux"],
-  ["grenade", ["grenade"], "panoplie", "Grenade", "Grenade explosive"],
-  ["ped", ["ped"], "panoplie", "PED", "Grenade PED"],
-  ["flash", ["flash"], "panoplie", "Flash", "Grenade aveuglante"],
-  ["interf", ["interf"], "panoplie", "Interf.", "Grenade d'interférence"],
   ["sort1", ["sort1"], "panoplie", "Sort 1", "Sort 1"],
   ["sort2", ["sort2"], "panoplie", "Sort 2", "Sort 2"],
   ["sort3", ["sort3"], "panoplie", "Sort 3", "Sort 3"],
@@ -157,11 +163,18 @@ function g2e_style() {
     "#g2e-tactile button svg{width:46%;height:46%}",
     "#g2e-tactile button.appui{transform:scale(.92);background:rgba(255,255,255,.28)}",
     "#g2e-tactile .tir{border-color:rgba(255,120,110,.75);background:rgba(120,20,20,.35)}",
+    // Selon la situation : un bouton inutile maintenant disparaît ; il réapparaît en douceur.
+    "#g2e-tactile button.inutile{display:none}",
+    "#g2e-tactile:not(.edition) button.surgit{animation:g2e-surgit .22s ease-out}",
+    "@keyframes g2e-surgit{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:var(--op)}}",
+    "#g2e-tactile .interagir.possible{border-color:#7cf5a0;box-shadow:0 0 14px rgba(124,245,160,.45)}",
+    "#g2e-tactile [data-groupe=contexte]{font-size:11px}",
     "#g2e-tactile [data-groupe=panoplie]{display:none;border-radius:14px;background:rgba(10,14,20,.55)}",
     "#g2e-tactile.panoplie [data-groupe=panoplie],#g2e-tactile.edition [data-groupe=panoplie]{display:flex}",
     "#g2e-tactile.panoplie [data-id=plus]{background:rgba(255,255,255,.3)}",
     // Le mode disposition : les boutons se déplacent, la barre de réglages au milieu.
     "#g2e-tactile.edition button{opacity:1;border-style:dashed;animation:none}",
+    "#g2e-tactile.edition button.inutile{display:flex}",
     "#g2e-tactile.edition button.choisi{border-color:#7cf5a0;border-style:solid;box-shadow:0 0 0 3px rgba(124,245,160,.35)}",
     "#g2e-edition{display:none;position:absolute;left:max(2vw,env(safe-area-inset-left));bottom:3vh;width:min(42vw,360px);max-height:72vh;overflow:auto;",
     "padding:12px 14px;border-radius:14px;background:rgba(8,12,18,.88);color:#e8f2ea;font:13px/1.35 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5);touch-action:auto}",
@@ -183,7 +196,7 @@ function g2e_style() {
 // Les places par défaut, selon la taille de l'écran : le bouton de tir sous le pouce droit, au-dessus des barres de vie,
 // d'armure et de munitions du jeu (en bas à droite) ; l'arc autour de lui ; la rangée du haut à droite ; la panoplie en
 // deux lignes au milieu, sous la rangée du haut.
-function g2e_places_defaut() {
+function g2e_places_defaut(cachees) {
   var L = window.innerWidth;
   var H = window.innerHeight;
   var p = {};
@@ -198,14 +211,22 @@ function g2e_places_defaut() {
     var a = (b[1] * Math.PI) / 180;
     p[b[0]] = { x: cx + Math.cos(a) * r, y: cy - Math.sin(a) * r, t: petit };
   });
+  // Le second arc : grenades possédées et couteau, plus loin du pouce, vers le haut.
+  var r2 = r + petit * 1.12;
+  [["gren", 168], ["flash", 146], ["ped", 124], ["interf", 102], ["couteau", 80]].forEach(function (b) {
+    var a = (b[1] * Math.PI) / 180;
+    p[b[0]] = { x: cx + Math.cos(a) * r2, y: cy - Math.sin(a) * r2, t: Math.round(petit * 0.86) };
+  });
   var h = Math.round(Math.min(H * 0.095, 46));
   var pas = Math.min(H * 0.115, 56);
   var droite = L - Math.max(L * 0.03, 12) - h / 2;
   var haut = Math.max(H * 0.03, 8) + h / 2;
-  ["pause", "scores", "acheter", "bombe", "plus", "reglages"].forEach(function (id, i) {
+  // La rangée du haut, de droite à gauche, sans trou quand Acheter ou Bombe ne servent pas.
+  ["pause", "scores", "acheter", "bombe", "plus", "reglages"].filter(function (id) { return !(cachees && cachees[id]); }).forEach(function (id, i) {
     p[id] = { x: droite - i * pas, y: haut, t: h };
   });
-  var pano = G2E_BOUTONS.filter(function (b) { return b[2] === "panoplie"; });
+  // La panoplie : ses seuls boutons utiles maintenant, rangés sans trou.
+  var pano = G2E_BOUTONS.filter(function (b) { return b[2] === "panoplie" && !(cachees && cachees[b[0]]); });
   var c = Math.round(Math.min(H * 0.12, 56));
   var parLigne = Math.ceil(pano.length / 2);
   var x0 = L / 2 - ((parLigne - 1) * (c + 8)) / 2;
@@ -219,10 +240,15 @@ function g2e_places_defaut() {
 function g2e_placer(racine, reglages) {
   var L = window.innerWidth;
   var H = window.innerHeight;
-  var defaut = g2e_places_defaut();
+  var cachees = {};
+  if (!racine.classList.contains("edition")) {
+    Array.prototype.forEach.call(racine.querySelectorAll("button.inutile"), function (el) { cachees[el.getAttribute("data-id")] = true; });
+  }
+  var defaut = g2e_places_defaut(cachees);
   Array.prototype.forEach.call(racine.querySelectorAll("button[data-id]"), function (el) {
     var id = el.getAttribute("data-id");
     var d = defaut[id];
+    if (!d) return;
     var o = reglages.boutons[id] || {};
     var taille = Math.round(d.t * (o.s || 1));
     var x = o.x != null ? o.x * L : d.x;
@@ -306,6 +332,7 @@ function g2e_creer_interface() {
       racine.classList.remove("edition");
       if (choisi) choisi.classList.remove("choisi");
       choisi = null;
+      appliquer();
     }
   });
   ["touchstart", "touchmove", "touchend"].forEach(function (t) {
@@ -371,6 +398,7 @@ function g2e_creer_interface() {
   function debut(t) {
     var el = t.target && t.target.closest ? t.target.closest("button[data-id]") : null;
     var edition = racine.classList.contains("edition");
+    if (el && !edition && el.classList.contains("inutile")) el = null;
     if (el && edition) {
       // Mode disposition : le bouton touché est choisi et suit le doigt.
       if (choisi) choisi.classList.remove("choisi");
@@ -387,6 +415,7 @@ function g2e_creer_interface() {
       if (id === "reglages") {
         g2e_tactile.toutLacher();
         racine.classList.add("edition");
+        appliquer();
         return;
       }
       if (id === "plus") {
@@ -451,6 +480,54 @@ function g2e_creer_interface() {
 
   // Pas de menu contextuel ni de loupe sur un appui long.
   racine.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  // Ce que le joueur peut faire maintenant (Module._g2e_commandes, bits) : seuls les boutons utiles restent, et le
+  // bouton de tir prend l'icône de ce qu'il tient. Bit 1 absent (moteur sans relevé, autre écran) : tous les boutons.
+  var dernier = -1;
+  var boutonTir = racine.querySelector('[data-id="tir"]');
+  g2e_tactile.contexte = function (bits) {
+    if (bits === dernier) return;
+    dernier = bits;
+    var connu = (bits & 1) !== 0;
+    var enMain = (bits >> 5) & 7;
+    var grenades = (bits >> 8) & 15;
+    var utile = {
+      recharger: !connu || (bits & 16) !== 0,
+      interagir: !connu || (bits & 2) !== 0,
+      acheter: !connu || (bits & 4) !== 0,
+      bombe: !connu || ((bits & 8) !== 0 && enMain !== 4),
+      tir2: !connu || enMain === 1 || enMain === 2,
+      arme: !connu || (bits & 8192) !== 0 || enMain === 0,
+      gren: connu && (grenades & 1) !== 0,
+      ped: connu && (grenades & 2) !== 0,
+      flash: connu && (grenades & 4) !== 0,
+      interf: connu && (grenades & 8) !== 0,
+      couteau: connu && (bits & 4096) !== 0,
+      arme1: !connu || (bits & 8192) !== 0,
+      arme2: !connu || (bits & 8192) !== 0,
+      deux: !connu || (bits & 8192) !== 0,
+      couteaux: !connu || (bits & 4096) !== 0,
+    };
+    Object.keys(utile).forEach(function (id) {
+      var el = racine.querySelector('[data-id="' + id + '"]');
+      if (!el) return;
+      var avant = !el.classList.contains("inutile");
+      el.classList.toggle("inutile", !utile[id]);
+      if (utile[id] && !avant) {
+        el.classList.remove("surgit");
+        void el.offsetWidth;
+        el.classList.add("surgit");
+      }
+    });
+    racine.querySelector('[data-id="interagir"]').classList.toggle("possible", connu && (bits & 2) !== 0);
+    g2e_placer(racine, reglages);
+    var icone = enMain === 2 ? "lame" : enMain === 3 ? "lancer" : enMain === 4 ? "poser" : "tir";
+    if (boutonTir.getAttribute("data-icone") !== icone) {
+      boutonTir.setAttribute("data-icone", icone);
+      boutonTir.innerHTML = g2e_icone(icone);
+      boutonTir.setAttribute("aria-label", { tir: "Tirer", lame: "Frapper", lancer: "Lancer", poser: "Poser la bombe" }[icone]);
+    }
+  };
 
   g2e_tactile.toutLacher = function () {
     Object.keys(doigts).forEach(fin);
@@ -539,6 +616,7 @@ function g2e_tactile_demarrer(module) {
       // Un menu s'ouvre : rien ne reste appuyé.
       if (!enJeu && g2e_tactile.toutLacher) g2e_tactile.toutLacher();
     }
+    if (g2e_tactile.contexte) g2e_tactile.contexte(typeof module._g2e_commandes === "function" ? module._g2e_commandes() : 0);
     g2e_taille_canvas();
     g2e_manette(t);
     requestAnimationFrame(image);
