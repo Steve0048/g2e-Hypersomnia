@@ -1,16 +1,17 @@
 // Game2Earn : jouer à Hypersomnia au doigt (téléphone, tablette) et à la manette.
 //
 // Tactile (seulement sur un écran tactile, et seulement en pleine partie : dans un menu, le doigt touche le jeu) :
-//   - moitié gauche : le joystick apparaît sous le doigt qui s'y pose, et suit son glissement (déplacement) ;
+//   - moitié gauche : le joystick apparaît sous le doigt qui s'y pose, et suit son glissement (déplacement ;
+//     poussé jusqu'au bord : sprint) ;
 //   - moitié droite : glisser le doigt vise ; le gros bouton tire (et vise aussi si le doigt glisse dessus) ;
 //   - boutons : recharger, esquive, interagir (désamorcer, porte), arme précédente, acheter, bombe, scores, pause.
-// Manette (API Gamepad, disposition standard) : stick gauche déplacement, stick droit visée, gâchettes tir et tir
+// Manette (API Gamepad, disposition standard) : stick gauche déplacement (clic : sprint), stick droit visée, gâchettes tir et tir
 // secondaire, A esquive, X recharger, B interagir, Y arme précédente, RB acheter, LB bombe, Start pause, Select scores.
 //
 // Le moteur reçoit les commandes comme le clavier et la souris (correctif 0008, src/augs/window_framework/window_sdl2.cpp) :
 // Module._g2e_touche(numero, appuyee), Module._g2e_viser(dx, dy) ; Module._g2e_en_jeu() dit s'il est en pleine partie.
 
-var G2E_TOUCHES = { haut: 0, gauche: 1, bas: 2, droite: 3, tir: 4, tir2: 5, recharger: 6, esquive: 7, interagir: 8, arme: 9, acheter: 10, bombe: 11, pause: 12, scores: 14 };
+var G2E_TOUCHES = { haut: 0, gauche: 1, bas: 2, droite: 3, tir: 4, tir2: 5, recharger: 6, esquive: 7, interagir: 8, arme: 9, acheter: 10, bombe: 11, pause: 12, sprint: 13, scores: 14 };
 
 var g2e_tactile = {
   module: null,
@@ -91,6 +92,7 @@ function g2e_style() {
     "#g2e-joy{position:absolute;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .12s;",
     "background:radial-gradient(circle,rgba(255,255,255,.10) 0,rgba(255,255,255,.04) 62%,rgba(255,255,255,0) 70%);border:2px solid rgba(255,255,255,.28);box-shadow:0 0 18px rgba(0,0,0,.35)}",
     "#g2e-joy.vu{opacity:1}",
+    "#g2e-joy.sprint{border-color:rgba(255,190,90,.85);box-shadow:0 0 18px rgba(255,170,60,.45)}",
     "#g2e-joy i{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(255,255,255,.42);",
     "border:2px solid rgba(255,255,255,.7);box-shadow:0 2px 10px rgba(0,0,0,.4);will-change:transform}",
     "#g2e-tactile button{position:absolute;display:flex;align-items:center;justify-content:center;padding:0;border-radius:50%;color:#fff;",
@@ -188,6 +190,10 @@ function g2e_creer_interface() {
     g2e_touche("gauche", "joy", actif && ux < -0.38);
     g2e_touche("bas", "joy", actif && uy > 0.38);
     g2e_touche("haut", "joy", actif && uy < -0.38);
+    // Pousser le joystick jusqu'au bord : sprinter (l'anneau s'allume).
+    var sprint = l >= RAYON * 0.96;
+    joy.classList.toggle("sprint", sprint);
+    g2e_touche("sprint", "joy", sprint);
   }
 
   function fin(id) {
@@ -196,7 +202,7 @@ function g2e_creer_interface() {
     delete doigts[id];
     if (d.role === "joy") {
       g2e_tout_relacher("joy");
-      joy.classList.remove("vu");
+      joy.classList.remove("vu", "sprint");
       bouton.style.transform = "";
     } else if (d.role === "bouton") {
       d.el.classList.remove("appui");
@@ -297,6 +303,7 @@ function g2e_manette(t) {
   g2e_touche("gauche", "manette", enJeu && (ax < -zone || b(14)));
   g2e_touche("bas", "manette", enJeu && (ay > zone || b(13)));
   g2e_touche("haut", "manette", enJeu && (ay < -zone || b(12)));
+  g2e_touche("sprint", "manette", enJeu && b(10));
   // Visée au stick droit : vitesse progressive (au carré), environ 1 400 pixels par seconde au maximum.
   var rx = p.axes[2] || 0;
   var ry = p.axes[3] || 0;

@@ -88,10 +88,21 @@ function g2e_ecrire_session(session, table) {
     var lignes = ["actif=1", "contexte=" + (session.contexte || ""), "langue=" + session.langue];
     if (session.motDePasse) lignes.push("mot_de_passe=" + g2e_ligne(session.motDePasse));
     g2e_ecrire("/g2e/session.txt", lignes.join("\n") + "\n");
-    var paires = [];
-    for (var anglais in table) {
-      if (Object.prototype.hasOwnProperty.call(table, anglais) && table[anglais]) paires.push(g2e_ligne(anglais), g2e_ligne(table[anglais]));
+    // Sur un écran tactile, les consignes « tactile:<texte> » remplacent celles qui parlent du clavier et de la souris
+    // (le tutoriel nomme alors le joystick et les boutons de l'écran, g2e-tactile.js).
+    var tactile = typeof g2e_ecran_tactile === "function" && g2e_ecran_tactile();
+    var finale = {};
+    for (var cle in table) {
+      if (!Object.prototype.hasOwnProperty.call(table, cle) || !table[cle]) continue;
+      if (cle.indexOf("tactile:") === 0) {
+        if (tactile) finale[cle.slice(8)] = table[cle];
+      } else if (!(tactile && finale[cle])) {
+        finale[cle] = table[cle];
+      }
     }
+    g2e_etat.traductions = finale;
+    var paires = [];
+    for (var anglais in finale) paires.push(g2e_ligne(anglais), g2e_ligne(finale[anglais]));
     g2e_ecrire("/g2e/traduction.txt", paires.join("\n") + "\n");
   } catch (e) {
     console.warn("Game2Earn : session non écrite", e);
