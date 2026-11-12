@@ -1,5 +1,5 @@
 diff --git a/src/augs/window_framework/window_sdl2.cpp b/src/augs/window_framework/window_sdl2.cpp
-index e2c1f22..554e958 100644
+index e2c1f22..1ad3981 100644
 --- a/src/augs/window_framework/window_sdl2.cpp
 +++ b/src/augs/window_framework/window_sdl2.cpp
 @@ -1,4 +1,6 @@
@@ -9,7 +9,7 @@ index e2c1f22..554e958 100644
  
  #include "augs/window_framework/window.h"
  #include "augs/log.h"
-@@ -13,6 +15,57 @@ int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char*
+@@ -13,6 +15,73 @@ int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char*
  EM_JS(int, get_canvas_width, (), { return canvas.width; });
  EM_JS(int, get_canvas_height, (), { return canvas.height; });
  
@@ -48,6 +48,22 @@ index e2c1f22..554e958 100644
 +			case 12: return key::ESC;
 +			case 13: return key::LSHIFT;
 +			case 14: return key::TAB;
++			case 15: return key::_1;
++			case 16: return key::_2;
++			case 17: return key::_3;
++			case 18: return key::MMOUSE;
++			case 19: return key::MOUSE4;
++			case 20: return key::MOUSE5;
++			case 21: return key::J;
++			case 22: return key::WHEELDOWN;
++			case 23: return key::WHEELUP;
++			case 24: return key::Z;
++			case 25: return key::X;
++			case 26: return key::V;
++			case 27: return key::G;
++			case 28: return key::H;
++			case 29: return key::F;
++			case 30: return key::LCTRL;
 +			default: return key::INVALID;
 +		}
 +	}
@@ -67,7 +83,7 @@ index e2c1f22..554e958 100644
  int FilterEvents(void* userdata, SDL_Event *event) {
  	(void)userdata;
  
-@@ -304,6 +357,29 @@ namespace augs {
+@@ -304,6 +373,29 @@ namespace augs {
          }
  
  #if PLATFORM_WEB

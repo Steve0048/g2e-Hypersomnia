@@ -10,12 +10,14 @@ env -i HOME=/home/hypersomniac/maitre TMPDIR=/home/hypersomniac/maitre/tmp PATH=
   ./Hypersomnia-Headless.AppImage --appimage-extract-and-run --masterserver --no-update-on-launch &
 
 # Réglages du serveur du match sans variable d'environnement : aucune carte demandée à hypersomnia.io (les cartes
-# officielles sont dans l'image ; une autre carte se télécharge depuis le serveur du match lui-même).
+# officielles sont dans l'image ; une autre carte se télécharge depuis le serveur du match lui-même), et un match court :
+# premier à 7 manches gagnées (13 manches au plus, environ 30 minutes ; 16 sur PC, 10 dans le navigateur sans ce réglage).
 mkdir -p .config/Hypersomnia/user/conf.d
 cat > .config/Hypersomnia/user/conf.d/game2earn.json <<'JSON'
 {
   "server": {
-    "external_arena_files_provider": ""
+    "external_arena_files_provider": "",
+    "max_team_score": 7
   }
 }
 JSON
