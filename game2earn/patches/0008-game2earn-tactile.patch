@@ -1,0 +1,126 @@
+diff --git a/src/augs/window_framework/window_sdl2.cpp b/src/augs/window_framework/window_sdl2.cpp
+index e2c1f22..554e958 100644
+--- a/src/augs/window_framework/window_sdl2.cpp
++++ b/src/augs/window_framework/window_sdl2.cpp
+@@ -1,4 +1,6 @@
+ #include <SDL2/SDL.h>
++#include <utility>
++#include <vector>
+ 
+ #include "augs/window_framework/window.h"
+ #include "augs/log.h"
+@@ -13,6 +15,57 @@ int ImTextCharFromUtf8(unsigned int* out_char, const char* in_text, const char*
+ EM_JS(int, get_canvas_width, (), { return canvas.width; });
+ EM_JS(int, get_canvas_height, (), { return canvas.height; });
+ 
++/*
++	Game2Earn : commandes tactiles et manette envoyées par la page (assets/g2e-tactile.js).
++	Elles entrent dans le jeu comme le clavier et la souris, à l'image suivante.
++*/
++namespace {
++	struct g2e_entree_type {
++		std::vector<std::pair<int, bool>> touches;
++		int dx = 0;
++		int dy = 0;
++	};
++
++	g2e_entree_type& g2e_entree() {
++		static g2e_entree_type e;
++		return e;
++	}
++
++	augs::event::keys::key g2e_cle(const int numero) {
++		using augs::event::keys::key;
++
++		switch (numero) {
++			case 0: return key::W;
++			case 1: return key::A;
++			case 2: return key::S;
++			case 3: return key::D;
++			case 4: return key::LMOUSE;
++			case 5: return key::RMOUSE;
++			case 6: return key::R;
++			case 7: return key::SPACE;
++			case 8: return key::E;
++			case 9: return key::Q;
++			case 10: return key::B;
++			case 11: return key::C;
++			case 12: return key::ESC;
++			case 13: return key::LSHIFT;
++			case 14: return key::TAB;
++			default: return key::INVALID;
++		}
++	}
++}
++
++extern "C" {
++	EMSCRIPTEN_KEEPALIVE void g2e_touche(const int numero, const int appuyee) {
++		g2e_entree().touches.emplace_back(numero, appuyee != 0);
++	}
++
++	EMSCRIPTEN_KEEPALIVE void g2e_viser(const int dx, const int dy) {
++		g2e_entree().dx += dx;
++		g2e_entree().dy += dy;
++	}
++}
++
+ int FilterEvents(void* userdata, SDL_Event *event) {
+ 	(void)userdata;
+ 
+@@ -304,6 +357,29 @@ namespace augs {
+         }
+ 
+ #if PLATFORM_WEB
++		{
++			auto& entree = g2e_entree();
++
++			for (const auto& t : entree.touches) {
++				const auto cle = g2e_cle(t.first);
++
++				if (cle != event::keys::key::INVALID) {
++					event::change ch;
++					ch.msg = t.second ? event::message::keydown : event::message::keyup;
++					ch.data.key.key = cle;
++					handle_event(ch);
++				}
++			}
++
++			entree.touches.clear();
++
++			if (entree.dx != 0 || entree.dy != 0) {
++				handle_event(do_raw_motion({ static_cast<short>(entree.dx), static_cast<short>(entree.dy) }));
++				entree.dx = 0;
++				entree.dy = 0;
++			}
++		}
++
+ 		auto& esc_presses = platform->esc_presses;
+ 
+ 		if (esc_presses > 0) {
+diff --git a/src/work.cpp b/src/work.cpp
+index 6587197..9b0c05c 100644
+--- a/src/work.cpp
++++ b/src/work.cpp
+@@ -320,6 +320,13 @@ bool platform_muted_audio() {
+ 	return web_cg_mute_audio();
+ }
+ 
++/*
++	Game2Earn : la page demande si le joueur est en pleine partie (commandes tactiles affichées) ou dans un menu.
++*/
++extern "C" EMSCRIPTEN_KEEPALIVE int g2e_en_jeu() {
++	return g2e::en_jeu() ? 1 : 0;
++}
++
+ bool platform_disables_chat() {
+ 	return web_cg_disable_chat();
+ }
+@@ -7060,6 +7067,8 @@ work_result work(
+ 					&& !window_needs_cursor
+ 				;
+ 
++				g2e::en_jeu() = in_direct_gameplay;
++
+ 				/*
+ 					Top-level events, higher than IMGUI.
+ 				*/

@@ -140,6 +140,12 @@ namespace g2e {
 		return trouve == t.end() ? nullptr : std::addressof(trouve->second);
 	}
 
+	/* En pleine partie (pas de menu ni de fenêtre ouverte) : la page affiche alors les commandes tactiles. */
+	inline bool& en_jeu() {
+		static bool e = false;
+		return e;
+	}
+
 	/* Le jeu tourne-t-il dans Game2Earn ? */
 	inline bool actif() {
 		return etat().actif;

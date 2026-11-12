@@ -140,6 +140,8 @@ function g2e_lancer(argument) {
       callMain([argument]);
     } finally {
       g2e_debloquer_son();
+      // Commandes tactiles et manette (g2e-tactile.js).
+      if (typeof g2e_tactile_demarrer === "function") g2e_tactile_demarrer(g2e_etat.module || Module);
     }
   } else console.error("Game2Earn : callMain introuvable, le jeu ne peut pas démarrer");
 }

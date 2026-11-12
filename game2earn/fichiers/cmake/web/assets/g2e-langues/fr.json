@@ -348,5 +348,10 @@
   "{WALK_SILENTLY} to walk silently over the blue floor.": "{WALK_SILENTLY} pour marcher en silence sur le sol bleu.",
   "Forward moves towards crosshair": "Avancer vers le viseur",
   "Swap mouse buttons in akimbo": "Inverser les boutons avec deux armes",
-  "Click in the game to turn on the sound.": "Clique dans le jeu pour activer le son."
+  "Click in the game to turn on the sound.": "Clique dans le jeu pour activer le son.",
+  "Turn your phone to play.": "Tourne ton téléphone pour jouer.",
+  "RANKED LOBBY": "SALLE D'ATTENTE",
+  "WAITING FOR PLAYERS.": "EN ATTENTE DES JOUEURS.",
+  "WAITING FOR PLAYERS..": "EN ATTENTE DES JOUEURS..",
+  "WAITING FOR PLAYERS...": "EN ATTENTE DES JOUEURS..."
 }
